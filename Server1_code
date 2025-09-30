@@ -1,0 +1,1158 @@
+#!/usr/bin/env python3
+-- coding: utf-8 --
+"""
+Server1 - asyncio Hub + OPC UA Sidecar
+TCP/JSON 허브 (레거시 아두이노 평문 프로토콜 호환)
+아두이노1 우선: 평문 명령 송신 → "ACK:<msg>" 대기
+OPC UA 사이드카: AMR/Arduino 상태 변수/메서드 노출
+"""
+import asyncio, json, time, uuid, logging, random
+from typing import Dict, Optional, Tuple
+=========================
+Config
+=========================
+HUB_BIND = "0.0.0.0"        # 허브 수신 바인드 주소 (모든 인터페이스)
+HUB_PORT = 3111
+OPCUA_ADVERTISE_HOST = "0.0.0.0"   # UA 엔드포인트에 노출할 호스트(동일 PC면 127.0.0.1 또는 실제 IP)
+OPCUA_PORT = 4841
+ROLES = {"SERVER2", "ABB1", "ABB2", "ARDUINO1", "APP", "NODE_RED"}
+===== Routing Rules (발신장치 → {원문: [목적지,...]}) =====
+값은 (dst, require_ack) 튜플의 리스트.
+필요 시 브로드캐스트도 가능: [("ABB1", False), ("SCADA", False)]
+ROUTE = {
+"SERVER2": {
+# 서버2 → 아두이노
+"call_amr": [("ARDUINO1", False)],
+"snd_box_give": [("ARDUINO1", False)],
+"white_box_give": [("ARDUINO1", False)],
+"black_box_give": [("ARDUINO1", False)],
+},
+    "ARDUINO1": {
+        # 아두이노 → 서버2
+        "receive1_ready": [("SERVER2", False)],
+        "receive2_ready": [("SERVER2", False)],
+
+        # 아두이노 → 로봇1
+        "give1_ready": [("ABB1", False)],
+        "give2_ready": [("ABB1", False)],
+        "Box_Wh": [("ABB1", False)],
+        "Box_Bk": [("ABB1", False)],
+        "car1_receive_ready": [("ABB1", False)],
+        "car2_receive_ready": [("ABB1", False)],
+        "BOX_COMP": [("NODE_RED", False)],
+
+        # 아두이노 → 로봇2
+        "car1_ready": [("ABB2", False)],
+        "car2_ready": [("ABB2", False)],
+    },
+    "ABB1": {
+        # 로봇1 → 아두이노
+        "black_con_comp": [("ARDUINO1", False)],
+        "white_con_comp": [("ARDUINO1", False)],
+        "Fst_Box_C": [("ARDUINO1", False)],
+        "Snd_Box_C": [("ARDUINO1", False)],
+        "ready_car": [("ARDUINO1", False),("APP", False)],
+        "car1_give": [("ARDUINO1", False)],
+        "car2_give": [("ARDUINO1", False)],
+
+        # 로봇1 → 앱
+        "BASE_END": [("APP", False)],
+        "BODY_END": [("APP", False)],
+        "WHEEL_END": [("APP", False)],
+        "C": [("APP", False)],
+
+    },
+    "ABB2": {
+        # 로봇2 → 아두이노
+        "car1_comp": [("ARDUINO1", False)],
+        "car2_comp": [("ARDUINO1", False)],
+        "COMPLETE": [("NODE_RED", False)],
+
+    },
+
+    "APP": {
+        # 앱 → abb1
+        "BASEBK": [("ABB1", False),("NODE_RED", False)],
+        "BASEWH": [("ABB1", False),("NODE_RED", False)],
+        "BODYWH": [("ABB1", False)],
+        "BODYRD": [("ABB1", False)],
+        "WHEELBK": [("ABB1", False)],
+        "WHEELWH": [("ABB1", False)],
+    },
+    # "ABB2": {...}  // 나중 확장
+}
+ACK_TIMEOUT = 2.0
+BACKOFFS = [0.2, 0.5, 1.0]   # 간단 백오프
+로그
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logging.getLogger("asyncua").setLevel(logging.WARNING)
+=========================
+In-memory state (UA가 주기 반영)
+=========================
+STATE = {
+"devices": {
+"ARDUINO1": {"conn": "disconnected", "last_seen": 0, "last_cmd": "", "last_ack": 0},
+"AMR": {"state": "idle", "last_seen": 0},
+"ABB1": {"conn": "disconnected", "state": "idle", "last_seen": 0, "job": None},
+"ABB2": {"conn": "disconnected", "state": "idle", "last_seen": 0, "job": None},
+"SERVER2": {"conn": "disconnected", "state": "idle", "last_seen": 0, "job": None},
+"APP": {"conn": "disconnected", "state": "idle", "last_seen": 0, "job": None},
+"NODE_RED": {"conn": "disconnected", "last_seen": 0, "last_topic": ""}  # ← 추가
+},
+"system": {"last_corr": None},
+}
+=========================
+Hub (TCP)
+=========================
+class Hub:
+def init(self):
+# writer -> meta
+self.clients: Dict[asyncio.StreamWriter, dict] = {}
+# (legacy ACK key) -> Future
+self.pending_legacy: Dict[str, asyncio.Future] = {}
+#--------SW ADD--------
+# Stores signals received from the Arduino.
+self.arduino_signals: Dict[str, int] = {}
+# Stores signals received from ABB1.
+self.abb1_signals: Dict[str, int] = {}
+# Stores signals received from ABB2.
+self.abb2_signals: Dict[str, int] = {}
+    async def start(self):
+        server = await asyncio.start_server(self._handle_client, HUB_BIND, HUB_PORT)
+        logging.info(f"Hub listening {HUB_BIND}:{HUB_PORT}")
+        async with server:
+            await server.serve_forever()
+
+    async def _route_legacy(self, src: str, msg: str):
+        """
+        룰 테이블 기반 중계:
+        - src: "ARDUINO1" / "ABB1" / ...
+        - msg: 수신 원문
+        """
+        rules = ROUTE.get(src, {})
+        targets = rules.get(msg)
+        if not targets:
+            return  # 라우팅 대상 없음
+
+        for dst, need_ack in targets:
+            if dst in ("ABB1", "ABB2"):
+                await self.send_abb_cmd(dst, msg, require_ack=need_ack)
+            elif dst == "ARDUINO1":
+                await self.send_arduino_cmd(msg, require_ack=need_ack)
+            elif dst == "SERVER2":
+                await self.send_server2_cmd(msg)  # SERVER2는 개행 기반으로 전송
+            elif dst == "NODE_RED":
+                await self.send_node_red_cmd(msg)  # ← 추가: Node-RED로 포워딩
+            elif dst == "APP":
+                await self.send_app_cmd(msg)  # APP으로 전달 (신규)
+            else:
+                # 확장: GUI/SCADA/다른 서버로의 전송 구현 위치
+                logging.info(f"(route skipped) unsupported dst={dst} for msg={msg}")
+
+    async def _read_first_burst(
+        self,
+        reader: asyncio.StreamReader,
+        first_timeout: float = 60.0,     # ABB RAPID 시작 지연 대비 넉넉히
+        idle_timeout: float = 0.2,       # 연속 수신이 멈추면(200ms) 버스트 종료
+        max_bytes: int = 2048
+    ) -> str:
+        """
+        첫 바이트는 first_timeout 내에 기다리고, 이후 idle_timeout 동안 추가 바이트를 수집.
+        개행(\n) 없이도 첫 메시지를 '버스트'로 간주하여 반환한다.
+        """
+        buf = bytearray()
+
+        # 첫 바이트 대기
+        b = await asyncio.wait_for(reader.read(1), timeout=first_timeout)
+        if not b:
+            return ""
+        buf += b
+
+        # 이후 버스트 수집
+        while len(buf) < max_bytes:
+            try:
+                chunk = await asyncio.wait_for(reader.read(max(1, max_bytes - len(buf))), timeout=idle_timeout)
+            except asyncio.TimeoutError:
+                break  # idle gap → 버스트 종료
+            if not chunk:
+                break  # EOF
+            buf += chunk
+            # 개행이 오면 즉시 종료(선호)
+            if b'\n' in chunk:
+                break
+
+        return buf.decode(errors="replace").strip()
+
+    async def _read_next_burst(
+            self,
+            reader: asyncio.StreamReader,
+            idle_timeout: float = 0.2,
+            max_bytes: int = 4096,
+    ) -> str:
+        """
+        개행 없이 보내는 장비(ABB)도 읽히도록 '잠깐 멈출 때(idle_timeout)'까지를 한 덩어리로 반환.
+        개행이 섞여 있으면 거기서 split 가능.
+        EOF면 빈 문자열 반환.
+        """
+        buf = bytearray()
+        while len(buf) < max_bytes:
+            try:
+                chunk = await asyncio.wait_for(
+                    reader.read(max(1, max_bytes - len(buf))),
+                    timeout=idle_timeout
+                )
+            except asyncio.TimeoutError:
+                break  # 잠깐(idle_timeout) 동안 추가 수신 없음 → 버스트 종료
+            if not chunk:
+                # 소켓 종료 (EOF)
+                break
+            buf += chunk
+            if b"\n" in chunk:
+                # 개행 사용 장비도 자연스럽게 여기서 끊긴다
+                break
+        return buf.decode(errors="replace").strip()
+
+    async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        peer = writer.get_extra_info("peername")
+        logging.info(f"connected: {peer}")
+        role = None
+        proto = None
+
+        try:
+            # 기존 readline() → 개행 없는 장비(ABB) 대비 버스트 판독으로 변경
+            first = await self._read_first_burst(reader, first_timeout=60.0, idle_timeout=0.2)
+            if not first:
+                raise ConnectionError("empty first line")
+
+            # [NEW] 클라이언트가 처음 보낸 '원문'을 그대로 남김
+            logging.info(f"[RAW][{peer}] {first!r}")
+
+            up = first.upper()
+
+            # 1) 레거시 문자열 (부분 포함 허용)
+            # - ABB: "ABB1" 포함이면 OK (개행 없어도 인식)
+            # - Arduino: "ROLE_ARDUINO" 또는 "ARDUINO1" 포함이면 OK
+            # - 기타: "ABB2", "SERVER2" 포함 허용
+            if ("ROLE_ARDUINO" in up) or ("ARDUINO1" in up):
+                role = "ARDUINO1"
+            elif "ABB1" in up:
+                role = "ABB1"
+            elif "ABB2" in up:
+                role = "ABB2"
+            elif ("ROLE_SERVER2" in up) or ("SERVER2" in up):
+                role = "SERVER2"
+            elif "ROLE_APP" in up:
+                role = "APP"
+            elif ("ROLE_NODERED" in up) or ("NODE_RED" in up):
+                role = "NODE_RED"
+            else:
+                # 2) JSON 등록 폴백
+                try:
+                    obj = json.loads(first)
+                except json.JSONDecodeError:
+                    raise ValueError(f"unsupported first line: {first[:80]}")
+                if obj.get("topic") != "sys.register":
+                    raise ValueError("first message must be sys.register")
+                role = obj.get("payload", {}).get("role")
+                if role not in ROLES:
+                    raise PermissionError(f"role not allowed: {role}")
+
+                proto = "json"
+                cid = obj.get("payload", {}).get("id", role)
+                self.clients[writer] = {"role": role, "id": cid, "peer": peer, "proto": proto, "last_seen": time.time()}
+                STATE.setdefault("devices", {})
+                STATE["devices"].setdefault(role, {})
+                STATE["devices"][role]["conn"] = "connected"
+                STATE["devices"][role]["last_seen"] = time.time()
+                logging.info(f"[ASSIGN] {role} : {obj!r}")
+                logging.info(f"[{role}] registered from {peer} via json")
+                await self._send_json(writer, self._ok(obj, {"welcome": True}))
+
+                # 수신 루프(JSON)
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+                    msg = line.decode(errors="replace").strip()
+                    self.clients[writer]["last_seen"] = time.time()
+                    logging.info(f"[RECV][{self.clients.get(writer, {}).get('role')}] {msg}")
+                    await self._handle_json(msg, writer)
+                return  # JSON 경로 종료
+
+            # --- 레거시 등록 처리 ---
+            proto = f"legacy-{role.lower()}"
+            self.clients[writer] = {
+                "role": role, "id": role, "peer": peer, "proto": proto, "last_seen": time.time()
+            }
+            STATE.setdefault("devices", {})
+            STATE["devices"].setdefault(role, {})
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+            # [NEW] 역할 매핑 로그 (레거시 경로: ABB1 : ROLE_ABB1 식으로 표기) -> 정상
+            logging.info(f"[ASSIGN] {role} : {first}")
+            logging.info(f"[{role}] registered from {peer} via legacy (first={first!r})")
+
+            # 수신 루프(레거시) — 개행 장비(Arduino 등) + 개행 불가 장비(ABB) 동시 지원
+            # 개행 사용하는 장비: 한 번에 여러 줄이 들어와도 splitlines()로 모두 처리
+            # 개행 없는 ABB: idle 타임아웃 기준으로 한 덩어리씩 처리
+            while True:
+                burst = await self._read_next_burst(
+                    reader,
+                    idle_timeout=0.2 if role in ("ABB1", "ABB2") else 1.0,
+                    max_bytes=4096
+                )
+                if burst is None:
+                    break  # EOF → 연결 종료
+
+                if not burst:
+                    continue  # (이론상 거의 없음) 방어적
+
+                self.clients[writer]["last_seen"] = time.time()
+
+                parts = burst.splitlines() or [burst]
+                for msg in parts:
+                    msg = msg.strip()
+                    if not msg:
+                        continue
+                    logging.info(f"[RECV][{role}]: {msg}")
+                    await self._handle_legacy(msg, writer)
+
+        except Exception as e:
+            logging.warning(f"disconnect {peer}: {e}")
+        finally:
+            self.clients.pop(writer, None)
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except:
+                pass
+            if role and role in STATE.get("devices", {}):
+                STATE["devices"][role]["conn"] = "disconnected"
+                STATE["devices"][role]["last_seen"] = time.time()
+
+    # ---------- JSON 공통 ----------
+    async def _handle_json(self, text: str, writer: asyncio.StreamWriter):
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            logging.warning(f"invalid json: {text[:80]}")
+            return
+
+        topic = obj.get("topic", "")
+        if topic in ("sys.ok", "sys.err"):
+            return
+        if topic == "sys.heartbeat":
+            await self._send_json(writer, self._ok(obj, {"alive": True}))
+            return
+
+        #--------SW ADD--------
+        role = self.clients.get(writer, {}).get("role")
+        if role == "NODE_RED":
+            STATE["devices"]["NODE_RED"]["last_topic"] = topic
+
+        logging.info(f"json msg [{role}]: {topic}")
+
+        logging.info(f"json msg [{self.clients.get(writer, {}).get('role')}]: {topic}")
+        # TODO: ABB1/ABB2/GUI/SCADA 핸들러
+
+    async def _send_json(self, writer, obj: dict):
+        obj.setdefault("ver", "1.0")
+        obj.setdefault("ts", int(time.time()))
+        obj.setdefault("corr", obj.get("corr") or str(uuid.uuid4()))
+        data = (json.dumps(obj, ensure_ascii=False) + "\n").encode()
+        writer.write(data)
+        await writer.drain()
+
+    def _ok(self, req: dict, payload: Optional[dict] = None) -> dict:
+        return {"topic": "sys.ok", "corr": req.get("corr"), "payload": payload or {}}
+
+    #--------SW ADD--------
+    async def _send_json_to_node_red(self, topic: str, payload: dict):
+        """
+        Helper method to send a JSON message to Node-RED.
+        """
+        targets = [w for w, m in self.clients.items() if m.get("role") == "NODE_RED"]
+        if not targets:
+            logging.warning("No NODE_RED client connected.")
+            return
+
+        writer = targets[0]
+        try:
+            msg_obj = {"topic": topic, "payload": payload}
+            final_json_str = json.dumps(msg_obj, ensure_ascii=False)
+            data = (final_json_str + "\n").encode()
+            writer.write(data)
+            await writer.drain()
+            logging.info(f"-> NODE_RED: {final_json_str}")
+            STATE["devices"]["NODE_RED"]["last_seen"] = time.time()
+            STATE["devices"]["NODE_RED"]["conn"] = "connected"
+        except Exception as e:
+            logging.error(f"Failed to send JSON to NODE_RED: {e}")
+
+    # ---------- 레거시 공용 엔트리 ----------
+    async def _handle_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        """레거시 1줄 메시지 공용 엔트리: role에 따라 하위 핸들러로 위임"""
+        role = self.clients.get(writer, {}).get("role")
+        try:
+            if role == "ARDUINO1":
+                return await self._handle_arduino_legacy(msg, writer)
+            elif role in ("ABB1", "ABB2"):
+                return await self._handle_abb_legacy(msg, writer)
+            elif role == "SERVER2":
+                return await self._handle_server2_legacy(msg, writer)
+            elif role == "APP":
+                return await self._handle_app_legacy(msg, writer)  # 신규
+            else:
+                logging.debug(f"[LEGACY][{role}] {msg}")
+        except Exception as e:
+            logging.exception(f"[LEGACY] handler error ({role}): {e}")
+
+    # ---------- 레거시 아두이노 ----------
+    async def _handle_arduino_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        role = self.clients.get(writer, {}).get("role", "ARDUINO1")
+
+        #amr
+        # 연결 상태 갱신
+        if role in STATE["devices"]:
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+
+        # ---- AMR 상태 전환: arrived / amr_move (레거시·JSON 모두 지원) ----
+        state_change = None
+        m = msg.strip()
+
+        if m.startswith("{"):
+            # JSON: {"topic":"arrived"} / {"topic":"amr_move"} / {"payload":"arrived"...}
+            try:
+                obj = json.loads(m)
+                topic = str(obj.get("topic", "")).lower()
+                payload = obj.get("payload", None)
+
+                if topic in ("amr.arrived", "arrived"):
+                    state_change = "arrived"
+                elif topic in ("amr.move", "amr_move", "moving"):
+                    state_change = "moving"
+
+                if not state_change and isinstance(payload, str):
+                    pl = payload.lower()
+                    if pl in ("amr.arrived", "arrived"):
+                        state_change = "arrived"
+                    elif pl in ("amr.move", "amr_move", "moving"):
+                        state_change = "moving"
+            except Exception:
+                pass
+        else:
+            # 레거시 문자열: arrived / amr_move / amr.move / moving ...
+            key = m.lower()
+            if key in ("amr.arrived", "arrived"):
+                state_change = "arrived"
+            elif key in ("amr.move", "amr_move", "moving"):
+                state_change = "moving"
+
+        if state_change:
+            STATE["devices"]["AMR"]["state"] = state_change
+            STATE["devices"]["AMR"]["last_seen"] = time.time()
+            # (선택) 모니터링 브릿지
+            try:
+                await self._send_json_to_node_red("amr.state", state_change.upper())
+            except Exception:
+                pass
+
+        #--------SW ADD--------
+        # Stores the received signal and increments its count.
+        self.arduino_signals[msg] = self.arduino_signals.get(msg, 0) + 1
+
+        # Check for specific signals and send JSON to Node-RED.
+        if msg == "car1_ready":
+            json_payload ="CAR_DISPLAY_ON"
+            await self._send_json_to_node_red("arduino.data", json_payload)
+        if msg == "box_load_done":
+            json_payload ="AMR_WHEEL_MOVE_ON"
+            await self._send_json_to_node_red("arduino.data", json_payload)
+        # --------SW ADD2--------
+        #if msg == "car1_give":
+        #    json_payload = "ABB_CAR_MOVE_ON"
+        #    await self._send_json_to_node_red("arduino.data", json_payload)
+        await self._route_legacy("ARDUINO1", msg)
+
+    # Hub 클래스에 신규 핸들러 추가
+    async def _handle_app_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        """
+        APP에서 들어오는 레거시 1줄 메시지 처리.
+        ROUTE['APP'] 규칙에 따라 라우팅.
+        """
+        role = self.clients.get(writer, {}).get("role", "APP")
+        logging.info(f"[{role}] legacy msg: {msg}")
+
+        # 상태 업데이트
+        if role in STATE["devices"]:
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+
+        # 라우팅 (예: BASEBK/BODYWH/WHEELBK... → ABB1)
+        await self._route_legacy("APP", msg)
+
+
+        # ACK 처리
+        if msg.startswith("ACK:"):
+            ack_msg = msg[4:]
+            key = f"{role}|{ack_msg}"
+            fut = self.pending_legacy.pop(key, None)
+            if fut and not fut.done():
+                fut.set_result(True)
+            STATE["devices"]["ARDUINO1"]["last_ack"] = time.time()
+            STATE["devices"]["ARDUINO1"]["last_seen"] = time.time()
+            logging.info(f"[{role}] ACK for '{ack_msg}'")
+            return
+            # 상태 갱신 후 라우팅
+        await self._route_legacy("ARDUINO1", msg)
+
+        # 이벤트 수신
+        #logging.info(f"[{role}] event: {msg}")
+        STATE["devices"]["ARDUINO1"]["conn"] = "connected"
+        STATE["devices"]["ARDUINO1"]["last_seen"] = time.time()
+
+        # 간단 AMR 상태 훅
+        if msg in ("receive1_ready", "receive2_ready", "car1_ready", "car2_ready"):
+            STATE["devices"]["AMR"]["state"] = "arrived"
+            STATE["devices"]["AMR"]["last_seen"] = time.time()
+
+    async def send_arduino_cmd(self, cmd: str, require_ack: bool = True) -> bool:
+        targets = [w for w, m in self.clients.items() if m["role"] == "ARDUINO1"]
+        if not targets:
+            logging.warning("no ARDUINO1 connected")
+            return False
+
+        writer = targets[0]
+        try:
+            writer.write((cmd + "\n").encode())  # 아두이노는 개행 기반
+            await writer.drain()
+            STATE["devices"]["ARDUINO1"]["last_cmd"] = cmd
+            STATE["devices"]["ARDUINO1"]["last_seen"] = time.time()
+            logging.info(f"-> ARDUINO1: {cmd}")
+        except Exception as e:
+            logging.error(f"send to ARDUINO1 failed: {e}")
+            return False
+
+        if not require_ack:
+            return True
+
+        key = f"ARDUINO1|{cmd}"
+        fut = asyncio.get_running_loop().create_future()
+        self.pending_legacy[key] = fut
+
+        for i, back in enumerate([0.0] + BACKOFFS):
+            try:
+                if i > 0:
+                    await asyncio.sleep(back * (0.9 + 0.2 * random.random()))
+                    writer.write((cmd + "\n").encode())
+                    await writer.drain()
+                    logging.info(f"retry({i}) -> ARDUINO1: {cmd}")
+                await asyncio.wait_for(fut, timeout=ACK_TIMEOUT)
+                return True
+            except asyncio.TimeoutError:
+                continue
+
+        logging.error(f"ACK timeout for '{cmd}' to ARDUINO1")
+        self.pending_legacy.pop(key, None)
+        return False
+
+    #추가 -> ABB 평문 명령
+    async def send_abb_cmd(self, target: str, cmd: str, require_ack: bool = False) -> bool:
+        """
+        ABB1/ABB2에게 평문 명령 한 줄 전송.
+        - target: "ABB1" 또는 "ABB2"
+        - require_ack=True 로 주면 "ACK:<cmd>"를 기다렸다가 True/False 반환
+        """
+        # 연결된 해당 타깃 writer 찾기
+        targets = [w for w, m in self.clients.items() if m.get("role") == target]
+        if not targets:
+            logging.warning(f"no {target} connected")
+            return False
+
+        writer = targets[0]
+        try:
+            writer.write((cmd).encode())
+            await writer.drain()
+            logging.info(f"-> {target}: {cmd}")
+            # 상태 찍어주기(UA 반영 루프가 읽어감)
+            if target in STATE["devices"]:
+                STATE["devices"][target]["last_seen"] = time.time()
+                STATE["devices"][target]["conn"] = "connected"
+        except Exception as e:
+            logging.error(f"send to {target} failed: {e}")
+            return False
+
+        if not require_ack:
+            return True
+
+        # ACK 기다리는 경로 (선택 사용)
+        key = f"{target}|{cmd}"
+        fut = asyncio.get_running_loop().create_future()
+        self.pending_legacy[key] = fut
+
+        for i, back in enumerate([0.0] + BACKOFFS):
+            try:
+                if i > 0:  # 재전송
+                    await asyncio.sleep(back * (0.9 + 0.2 * random.random()))
+                    writer.write((cmd).encode())
+                    await writer.drain()
+                    logging.info(f"retry({i}) -> {target}: {cmd}")
+                await asyncio.wait_for(fut, timeout=ACK_TIMEOUT)
+                return True
+            except asyncio.TimeoutError:
+                continue
+
+        logging.error(f"ACK timeout for '{cmd}' to {target}")
+        self.pending_legacy.pop(key, None)
+        return False
+
+        # 간단 재시도
+        for i, back in enumerate([0.0] + BACKOFFS):
+            try:
+                if i > 0:
+                    await asyncio.sleep(back * (0.9 + 0.2 * random.random()))
+                    writer.write((cmd).encode())
+                    await writer.drain()
+                    logging.info(f"retry({i}) -> ARDUINO1: {cmd}")
+                await asyncio.wait_for(fut, timeout=ACK_TIMEOUT)
+                return True
+            except asyncio.TimeoutError:
+                continue
+
+        logging.error(f"ACK timeout for '{cmd}'")
+        self.pending_legacy.pop(key, None)
+        return False
+
+    #--------SW ADD------
+    # 추가 -> SERVER2 평문 명령
+    async def send_server2_cmd(self, cmd: str) -> bool:
+        """
+        SERVER2에게 평문 명령 한 줄 전송.
+        """
+        targets = [w for w, m in self.clients.items() if m.get("role") == "SERVER2"]
+        if not targets:
+            logging.warning("no SERVER2 connected")
+            return False
+
+        writer = targets[0]
+        try:
+            writer.write((cmd + "\n").encode())  # SERVER2는 개행 기반 프로토콜로 가정
+            await writer.drain()
+            logging.info(f"-> SERVER2: {cmd}")
+            STATE["devices"]["SERVER2"]["last_seen"] = time.time()
+            STATE["devices"]["SERVER2"]["conn"] = "connected"
+            return True
+        except Exception as e:
+            logging.error(f"send to SERVER2 failed: {e}")
+            return False
+
+    #--------SW ADD------
+    # 추가 -> NODE_RED 평문/JSON 명령
+    async def send_node_red_cmd(self, cmd: str) -> bool:
+        """
+        NODE_RED에게 평문 명령 또는 JSON 메시지를 전송.
+        """
+        targets = [w for w, m in self.clients.items() if m.get("role") == "NODE_RED"]
+        if not targets:
+            logging.warning("no NODE_RED connected")
+            return False
+
+        writer = targets[0]
+        try:
+            # Node-RED가 JSON 프로토콜을 사용한다고 가정하고 메시지를 JSON으로 변환
+            msg_obj = {"topic": "cmd", "payload": cmd}
+            data = (json.dumps(msg_obj, ensure_ascii=False) + "\n").encode()
+
+            writer.write(data)
+            await writer.drain()
+            logging.info(f"-> NODE_RED: {data!r}")
+            STATE["devices"]["NODE_RED"]["last_seen"] = time.time()
+            STATE["devices"]["NODE_RED"]["conn"] = "connected"
+            return True
+        except Exception as e:
+            logging.error(f"send to NODE_RED failed: {e}")
+            return False
+
+    # Hub 클래스에 추가
+    async def send_app_cmd(self, cmd: str) -> bool:
+        """
+        APP(모바일/웹 앱 게이트웨이 등)에게 평문 한 줄 전송.
+        기본 가정: APP는 개행 기반 수신(readline).
+        """
+        targets = [w for w, m in self.clients.items() if m.get("role") == "APP"]
+        if not targets:
+            logging.warning("no APP connected")
+            return False
+
+        writer = targets[0]
+        try:
+            writer.write((cmd + "\n").encode())  # APP은 개행 기반으로 가정
+            await writer.drain()
+            logging.info(f"-> APP: {cmd}")
+            if "APP" in STATE["devices"]:
+                STATE["devices"]["APP"]["last_seen"] = time.time()
+                STATE["devices"]["APP"]["conn"] = "connected"
+            return True
+        except Exception as e:
+            logging.error(f"send to APP failed: {e}")
+            return False
+
+    #--------SW ADD EDIT------
+    # ---------- 레거시 ABB ----------
+    async def _handle_abb_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        """ABB1/ABB2 평문 메시지 처리 (필요 시 프로토콜 정의에 맞게 확장)"""
+        role = self.clients.get(writer, {}).get("role")
+
+        if role == "ABB1":
+            # Stores the received signal and increments its count.
+            self.abb1_signals[msg] = self.abb1_signals.get(msg, 0) + 1
+            json_payload = {}
+
+            if msg == "BASEBK" :
+                json_payload = "BASE_MOVE_ON"
+            elif msg == "BASEWH":
+                json_payload = "BODY_MOVE_ON"
+            elif msg == "BASE_END":
+                json_payload = "BODY_MOVE_ON"
+            elif msg == "BODY_END":
+                json_payload = "WHEEL_MOVE_ON"
+            elif msg == "car1_give":
+                json_payload = "ABB_CAR_MOVE_ON"
+
+            if json_payload:
+                await self._send_json_to_node_red("abb1.data", json_payload)
+
+        elif role == "ABB2":
+            # Stores the received signal and increments its count.
+            self.abb2_signals[msg] = self.abb2_signals.get(msg, 0) + 1
+            if msg == "COMPLETE":
+                json_payload = "COMPLETE"
+                await self._send_json_to_node_red("abb2.data", json_payload)
+
+        # 상태 갱신(UA 반영용)
+        if role in STATE["devices"]:
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+        logging.info(f"[{role}] legacy msg: {msg}")
+
+        # 예시) 단순 핑/퐁 규약
+        if msg.lower() == "ping":
+            try:
+                writer.write(b"PONG")
+                await writer.drain()
+            except Exception:
+                pass
+            return
+        # 상태 갱신 후 라우팅
+        await self._route_legacy(role, msg)  # role은 "ABB1" 또는 "ABB2"
+
+    #--------SW ADD2 EDIT------
+    # ---------- 레거시 SERVER2 ----------
+    async def _handle_server2_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        """보조 서버 등의 평문 메시지 처리 (브로커/중계 역할 등)"""
+        role = self.clients.get(writer, {}).get("role")
+        logging.info(f"[{role}] legacy msg: {msg}")
+
+        # 상태 갱신 (UA 반영용)
+        if role in STATE["devices"]:
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+
+        key = msg.strip()
+        json_payload = ""
+        topic = "server2.data"
+
+        # 요청에 맞춰 신호별 JSON 데이터 생성
+        if key == "factory_start":
+            json_payload = "FACTORY_START"
+        elif key == "black.5":
+            json_payload = "black.5"
+        elif key == "black.6":
+            json_payload = "black.6"
+        elif key == "black.7":
+            json_payload = "black.7"
+        elif key == "black.8":
+            json_payload = "black.8"
+        elif key == "white.5":
+            json_payload = "white.5"
+        elif key == "white.6":
+            json_payload = "white.6"
+        elif key == "white.7":
+            json_payload = "white.7"
+        elif key == "white.8":
+            json_payload = "white.8"
+        elif key == "black_box_give":
+            json_payload = "BLACK_CONT_COMP"
+            self.received_box_signal = "black_box_give"  # 'self'를 사용하여 클래스 변수에 상태 저장
+        elif key == "white_box_give":
+            json_payload = "WHITE_CONT_COMP"
+            self.received_box_signal = "white_box_give"  # 'self'를 사용하여 클래스 변수에 상태 저장
+        elif key == "snd_box_give":
+            if self.received_box_signal == "black_box_give":  # 'self'를 사용하여 저장된 상태를 읽음
+                json_payload = "WHITE_CONT_COMP"
+            elif self.received_box_signal == "white_box_give":  # 'self'를 사용하여 저장된 상태를 읽음
+                json_payload = "BLACK_CONT_COMP"
+            else:
+                logging.warning(
+                    f"[{role}] received 'snd_box_give' without a previous 'black_box_give' or 'white_box_give' signal.")
+                return
+
+        if json_payload:
+            await self._send_json_to_node_red(topic, json_payload)
+
+        # ↓↓ 변경 포인트 2: 항상 ROUTE 기반 라우팅 수행
+        await self._route_legacy("SERVER2", key)
+
+
+    #--------SW ADD EDIT------
+    async def _handle_node_red_legacy(self, msg: str, writer: asyncio.StreamWriter):
+        """
+        NODE_RED에서 수신한 메시지 처리.
+        """
+        role = self.clients.get(writer, {}).get("role")
+        logging.info(f"[{role}] legacy msg: {msg}")
+
+        # 여기서는 Node-RED로부터 받은 메시지를 처리하는 로직을 추가할 수 있습니다.
+        # 예: 특정 신호를 다른 장치로 라우팅하거나, 상태를 업데이트하는 등.
+        # 현재 코드에서는 별도의 라우팅 룰이 없으므로, 필요에 따라 ROUTE 딕셔너리에 추가해야 합니다.
+
+        # 상태 갱신(UA 반영용)
+        if role in STATE["devices"]:
+            STATE["devices"][role]["conn"] = "connected"
+            STATE["devices"][role]["last_seen"] = time.time()
+
+        # 예시: 받은 메시지에 따라 STATE 업데이트
+        if msg.startswith("STATUS:"):
+            status_msg = msg[7:].strip()
+            STATE["devices"]["NODE_RED"]["last_topic"] = status_msg
+            logging.info(f"[{role}] status updated to: {status_msg}")
+
+
+
+
+hub = Hub()
+=========================
+OPC UA Sidecar
+=========================
+from asyncua import Server, ua as ua_types  # ua_types.Variant / VariantType 사용
+class UASidecar:
+def init(self):
+self.server: Optional[Server] = None
+self.idx: Optional[int] = None
+self.vars: Dict[str, any] = {}
+    async def start(self):
+        try:
+            self.server = Server()
+            await self.server.init()
+
+            # 엔드포인트: 광고 호스트/포트
+            endpoint = f"opc.tcp://{OPCUA_ADVERTISE_HOST}:{OPCUA_PORT}"
+            self.server.set_endpoint(endpoint)
+
+            # 네임스페이스
+            self.idx = await self.server.register_namespace("urn:WheelAssembly:Server1")
+
+            # 주소공간
+            objects = self.server.nodes.objects
+            root = await objects.add_object(self.idx, "Server1")
+            amr = await root.add_object(self.idx, "AMR")
+            ardn = await root.add_object(self.idx, "Arduino1")
+            abb1 = await root.add_object(self.idx, "ABB1")
+            abb2 = await root.add_object(self.idx, "ABB2")
+            server2 = await root.add_object(self.idx, "SERVER2")
+            node_red = await root.add_object(self.idx, "NODE_RED")
+            app = await root.add_object(self.idx, "APP")  # ← 추가
+
+            # 변수
+            self.vars["AMR.Status"] = await amr.add_variable(self.idx, "AMR_Status", "idle")
+            #self.vars["AMR.LastSeen"] = await amr.add_variable(self.idx, "AMR_LastSeen", 0)
+            self.vars["Arduino1.Conn"] = await ardn.add_variable(self.idx, "Arduino_Conn", "disconnected")
+            self.vars["Arduino1.LastCmd"] = await ardn.add_variable(self.idx, "Arduino_LastCmd", "")
+            self.vars["Arduino1.LastSeen"] = await ardn.add_variable(self.idx, "Arduino_LastSeen", 0)
+            self.vars["ABB1.Conn"] = await abb1.add_variable(self.idx, "ABB1_Conn", "disconnected")
+            self.vars["ABB1.LastSeen"] = await abb1.add_variable(self.idx, "ABB1_LastSeen", 0)
+            self.vars["ABB2.Conn"] = await abb2.add_variable(self.idx, "ABB2_Conn", "disconnected")
+            self.vars["ABB2.LastSeen"] = await abb2.add_variable(self.idx, "ABB2_LastSeen", 0)
+            # Node-RED 변수 등록
+            self.vars["NodeRED.Conn"] = await node_red.add_variable(self.idx, "NodeRED_Conn", "disconnected")
+            self.vars["NodeRED.LastTopic"] = await node_red.add_variable(self.idx, "NodeRED_LastTopic", "")
+            self.vars["NodeRED.LastSeen"] = await node_red.add_variable(self.idx, "NodeRED_LastSeen", 0)
+            # SERVER2 변수 등록
+            self.vars["SERVER2.Conn"] = await server2.add_variable(self.idx, "SERVER2_Conn", "disconnected")
+            self.vars["SERVER2.LastSeen"] = await server2.add_variable(self.idx, "SERVER2_LastSeen", 0)
+            self.vars["APP.Conn"] = await app.add_variable(self.idx, "APP_Conn", "disconnected")  # ← 추가
+            self.vars["APP.LastSeen"] = await app.add_variable(self.idx, "APP_LastSeen", 0)  # ← 추가
+
+            for v in self.vars.values():
+                await v.set_writable(False)
+
+            # 메서드: DispatchAMR(boxId: String) -> Boolean
+            async def ua_dispatch_amr(parent, boxId):
+                try:
+                    # UAExpert가 Variant로 보낼 수 있음
+                    if isinstance(boxId, ua_types.Variant):
+                        box_id = boxId.Value
+                    else:
+                        box_id = str(boxId)
+
+                    logging.info(f"DispatchAMR called boxId={box_id}")
+
+                    # 상태변경(모니터링용)
+                    STATE["devices"]["AMR"]["state"] = "moving"
+                    STATE["devices"]["AMR"]["last_seen"] = time.time()
+
+                    ok = await hub.send_arduino_cmd("recv_cont", require_ack=True)
+
+                    # 반드시 Variant 리스트 반환
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+                except Exception:
+                    logging.exception("DispatchAMR failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            await amr.add_method(
+                self.idx,
+                "DispatchAMR",
+                ua_dispatch_amr,
+                [ua_types.VariantType.String],     # In
+                [ua_types.VariantType.Boolean],    # Out
+            )
+
+            # === (NEW) UA -> Arduino 문자열 전송 메서드 ===
+            async def ua_messege_to_arduino(parent, msg, requireAck=True):
+                """
+                UAExpert에서 입력한 문자열(msg)을 아두이노로 전송.
+                requireAck=True 이면 'ACK:<msg>' 수신까지 기다림(재시도 포함).
+                반환: [Boolean] (성공/실패)
+                """
+                try:
+                    # UAExpert가 Variant로 보낼 수도 있으므로 안전 변환
+                    if isinstance(msg, ua_types.Variant):
+                        text = str(msg.Value)
+                    else:
+                        text = str(msg)
+
+                    # 두 번째 인수(Boolean)는 선택적 — UAExpert에서 안 넣으면 기본 True
+                    if isinstance(requireAck, ua_types.Variant):
+                        need_ack = bool(requireAck.Value)
+                    else:
+                        need_ack = bool(requireAck)
+
+                    logging.info(f"UA -> Arduino send: '{text}', requireAck={need_ack}")
+
+                    ok = await hub.send_arduino_cmd(text, require_ack=need_ack)
+
+                    # 성공/실패를 Variant(Boolean) 리스트로 반환(AsyncUA 규약)
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+
+                except Exception:
+                    logging.exception("ua_messege_to_arduino failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            # Arduino1 오브젝트에 메서드 추가
+            await ardn.add_method(
+                self.idx,
+                "MessageToArduino",  # UAExpert에서 보이는 메서드명
+                ua_messege_to_arduino,  # 핸들러
+                [ua_types.VariantType.String,  # In[0] : msg
+                 ua_types.VariantType.Boolean],  # In[1] : requireAck (기본 True로 쓰면 됨)
+                [ua_types.VariantType.Boolean],  # Out[0]: ok
+            )
+
+            # === (NEW) UA -> ABB1 문자열 전송 메서드 ===
+            async def ua_message_to_abb1(parent, msg, requireAck=False):
+                """
+                UAExpert에서 입력한 문자열(msg)을 ABB1로 전송.
+                requireAck=True면 'ACK:<msg>' 수신까지 기다림(ABB RAPID에서 개행 포함 ACK 필요).
+                반환: [Boolean] (성공/실패)
+                """
+                try:
+                    # UAExpert가 Variant로 보낼 수 있으니 안전 변환
+                    if isinstance(msg, ua_types.Variant):
+                        text = str(msg.Value)
+                    else:
+                        text = str(msg)
+
+                    if isinstance(requireAck, ua_types.Variant):
+                        need_ack = bool(requireAck.Value)
+                    else:
+                        need_ack = bool(requireAck)
+
+                    logging.info(f"UA -> ABB1 send: '{text}', requireAck={need_ack}")
+
+                    ok = await hub.send_abb_cmd("ABB1", text, require_ack=need_ack)
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+
+                except Exception:
+                    logging.exception("ua_message_to_abb1 failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            # ABB1 오브젝트에 메서드 등록
+            await abb1.add_method(
+                self.idx,
+                "MessageToABB1",  # UAExpert에서 보이는 메서드명
+                ua_message_to_abb1,
+                [ua_types.VariantType.String,  # In[0] : msg
+                 ua_types.VariantType.Boolean],  # In[1] : requireAck (기본 False)
+                [ua_types.VariantType.Boolean],  # Out[0]: ok
+            )
+
+            #abb2
+            async def ua_message_to_abb2(parent, msg, requireAck=False):
+                """
+                UAExpert에서 입력한 문자열(msg)을 ABB2로 전송.
+                requireAck=True면 'ACK:<msg>' 수신까지 기다림(ABB RAPID에서 개행 포함 ACK 필요).
+                반환: [Boolean] (성공/실패)
+                """
+                try:
+                    if isinstance(msg, ua_types.Variant):
+                        text = str(msg.Value)
+                    else:
+                        text = str(msg)
+
+                    if isinstance(requireAck, ua_types.Variant):
+                        need_ack = bool(requireAck.Value)
+                    else:
+                        need_ack = bool(requireAck)
+
+                    logging.info(f"UA -> ABB2 send: '{text}', requireAck={need_ack}")
+
+                    ok = await hub.send_abb_cmd("ABB2", text, require_ack=need_ack)
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+
+                except Exception:
+                    logging.exception("ua_message_to_abb2 failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            # ABB2 오브젝트에 메서드 등록
+            await abb2.add_method(
+                self.idx,
+                "MessageToABB2",  # UAExpert에서 보이는 메서드명
+                ua_message_to_abb2,
+                [ua_types.VariantType.String,  # In[0] : msg
+                 ua_types.VariantType.Boolean],  # In[1] : requireAck (기본 False)
+                [ua_types.VariantType.Boolean],  # Out[0]: ok
+            )
+
+            #--------SW ADD--------
+            # === (추가) UA -> SERVER2 문자열 전송 메서드 ===
+            async def ua_message_to_server2(parent, msg):
+                """
+                UAExpert에서 입력한 문자열(msg)을 서버2로 전송.
+                """
+                try:
+                    if isinstance(msg, ua_types.Variant):
+                        text = str(msg.Value)
+                    else:
+                        text = str(msg)
+
+                    logging.info(f"UA -> SERVER2 send: '{text}'")
+
+                    ok = await hub.send_server2_cmd(text)
+
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+
+                except Exception:
+                    logging.exception("ua_message_to_server2 failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            # SERVER2 오브젝트에 메서드 등록
+            await server2.add_method(
+                self.idx,
+                "MessageToSERVER2",  # UAExpert에서 보이는 메서드명
+                ua_message_to_server2,  # 핸들러
+                [ua_types.VariantType.String],  # In[0] : msg
+                [ua_types.VariantType.Boolean],  # Out[0]: ok
+            )
+
+            #--------SW ADD--------
+            # === (추가) UA -> NODE_RED 문자열 전송 메서드 ===
+            async def ua_message_to_node_red(parent, msg):
+                """
+                UAExpert에서 입력한 문자열(msg)을 NODE_RED로 전송.
+                """
+                try:
+                    if isinstance(msg, ua_types.Variant):
+                        text = str(msg.Value)
+                    else:
+                        text = str(msg)
+
+                    logging.info(f"UA -> NODE_RED send: '{text}'")
+
+                    ok = await hub.send_node_red_cmd(text)
+
+                    return [ua_types.Variant(bool(ok), ua_types.VariantType.Boolean)]
+
+                except Exception:
+                    logging.exception("ua_message_to_node_red failed")
+                    return [ua_types.Variant(False, ua_types.VariantType.Boolean)]
+
+            # NODE_RED 오브젝트에 메서드 등록
+            await node_red.add_method(
+                self.idx,
+                "MessageToNodeRED",  # UAExpert에서 보이는 메서드명
+                ua_message_to_node_red,  # 핸들러
+                [ua_types.VariantType.String],  # In[0] : msg
+                [ua_types.VariantType.Boolean],  # Out[0]: ok
+            )
+
+            logging.info(f"OPC UA sidecar started {endpoint}")
+
+            # 실행 루프
+            async with self.server:
+                while True:
+                    await self._sync_vars()
+                    await asyncio.sleep(0.3)
+
+        except Exception:
+            logging.exception("UA sidecar failed to start")
+            raise
+
+    async def _sync_vars(self):
+        try:
+            # AMR
+            await self.vars["AMR.Status"].write_value(STATE["devices"]["AMR"]["state"])
+            #await self.vars["AMR.LastSeen"].write_value(amr_seen)
+            # Arduino1
+            a = STATE["devices"]["ARDUINO1"]
+            await self.vars["Arduino1.Conn"].write_value(a["conn"])
+            await self.vars["Arduino1.LastCmd"].write_value(a["last_cmd"] or "")
+            await self.vars["Arduino1.LastSeen"].write_value(int(a["last_seen"]))
+            # ABB1
+            b1 = STATE["devices"]["ABB1"]
+            await self.vars["ABB1.Conn"].write_value(b1["conn"])
+            await self.vars["ABB1.LastSeen"].write_value(int(b1["last_seen"]))
+            # ABB2
+            b2 = STATE["devices"]["ABB2"]
+            await self.vars["ABB2.Conn"].write_value(b2["conn"])
+            await self.vars["ABB2.LastSeen"].write_value(int(b2["last_seen"]))
+
+            #--------SW ADD--------
+            # NODE_RED
+            nr = STATE["devices"]["NODE_RED"]
+            await self.vars["NodeRED.Conn"].write_value(nr["conn"])
+            await self.vars["NodeRED.LastTopic"].write_value(nr["last_topic"])
+            await self.vars["NodeRED.LastSeen"].write_value(int(nr["last_seen"]))
+            # SERVER2
+            s2 = STATE["devices"]["SERVER2"]
+            await self.vars["SERVER2.Conn"].write_value(s2["conn"])
+            await self.vars["SERVER2.LastSeen"].write_value(int(s2["last_seen"]))
+            # APP
+            ap = STATE["devices"]["APP"]
+            await self.vars["APP.Conn"].write_value(ap["conn"])
+            await self.vars["APP.LastSeen"].write_value(int(ap["last_seen"]))
+
+        except Exception as e:
+            logging.debug(f"UA sync err: {e}")
+
+sidecar = UASidecar()
+=========================
+Main
+=========================
+async def main():
+await asyncio.gather(hub.start(), sidecar.start())
+if name == "main":
+try:
+asyncio.run(main())
+except Exception:
+logging.exception("startup failed")
