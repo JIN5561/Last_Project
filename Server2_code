@@ -1,0 +1,397 @@
+import communication_manager_test as cm
+import dobot_controller_test as dc
+import threading
+import queue
+import time
+
+# --- 1. 통신 설정 변수 정의 (메인 파일로 이동) ---
+DOBOT_SERIAL_PORT = 'COM11'
+DOBOT_BAUD_RATE = 115200
+
+ARDUINO_SERIAL_PORT = 'COM3'
+ARDUINO_BAUD_RATE = 115200
+
+PLC_IP_ADDRESS = '192.168.3.42'
+PLC_PORT = 5020
+
+SERVER1_IP_ADDRESS = '192.168.3.16'
+SERVER1_PORT = 3111
+
+# --- 2. 작업 큐 정의 (메인 프로그램 내부) ---
+dobot_task = queue.Queue()
+
+
+
+
+
+# 각 클라이언트들이 받을 신호 정리
+
+PLC_OUTPUT = {
+    "700" : "factory_start",
+    "701" : "run_color",
+    "702" : "run_dobot",
+    "703" : "box1_ready",
+    "704" : "box2_ready",
+    "705" : "servo1_arrive",
+    "706" : "servo2_arrive",
+    "707" : "white_box_give",
+    "708" : "black_box_give",
+
+}
+#servo1_arrive or servo2_arrive 처음오면 call_amr
+#
+PLC_INPUT = {
+    "color_comp": "601",
+    "dobot_comp": "602",
+    "gate1_open": "603",
+    "gate2_open": "604",
+    "box1_full": "605",
+    "box2_full": "606",
+    "box1_comp" : "607",
+    "box2_comp" : "608",
+    "Initialize" : "609",
+    "white" : "610",
+    "black" : "611",
+    "blue"  : "612"
+}
+
+
+dobot_list = {
+    "white",
+    "black",
+    "blue",
+    "run_dobot",
+    "box1_ready",
+    "box2_ready",
+    "HOME",
+    "box1_start",
+    "box2_start"
+}
+arduino_list = {
+    "run_color",
+    "box1_start",
+    "box2_start",
+    "servo1_arrive",
+    "servo2_arrive",
+    "FAILED"
+}
+
+server1_list = [
+    "factory_start",
+    "call_amr",
+    "white_box_give",
+    "black_box_give",
+    "snd_box_give",
+    "black.5",
+    "black.6",
+    "black.7",
+    "black.8",
+    "white.5",
+    "white.6",
+    "white.7",
+    "white.8",
+]
+
+plc_input_list = list(PLC_INPUT.keys())
+plc_output_list = list(PLC_OUTPUT.keys())
+
+# --- 3. 작업 스레드 (Worker Threads) ---
+def _dobot_worker_thread(shutdown_event, port, baud_rate):
+    """
+    두봇 제어를 전담하는 스레드.
+    dobot_task에서 명령을 받아 두봇 컨트롤러를 호출합니다.
+    """
+    print("두봇 작업 스레드 시작. 명령 대기 중...")
+
+    dobot = dc.DobotController(port, baud_rate) # <-- 포트 정보 전달
+    if not dobot.connect():
+        print("두봇 연결에 실패했습니다. 스레드를 종료합니다.")
+        return
+
+    while not shutdown_event.is_set():
+        try:
+            task = dobot_task.get(timeout=0.1)
+            print(f"[발신] Dobot -> {task} ")
+            temp = None
+            if task == 'box1_ready':
+                dobot.set_box(1, True)
+            elif task == 'box2_ready':
+                dobot.set_box(2, True)
+            elif task == "white":
+                dobot.set_wheel(task)
+            elif task == "black":
+                dobot.set_wheel(task)
+            elif task == "blue" :
+                dobot.set_wheel(task)
+            elif task == "run_dobot":
+                temp=dobot.pick_and_place()
+            elif task == "box1_start":
+                dobot.set_wheel(task)
+            elif task == "box2_start":
+                dobot.set_wheel(task)
+            elif task == "HOME":
+                dobot.home()
+
+            if temp:
+                cm.input_queue.put(temp)
+                print("[수신]Dobot : " + temp)
+            dobot_task.task_done()
+        except queue.Empty:
+            pass
+
+    print("두봇 작업 스레드 종료 신호 수신. 통신을 종료합니다.")
+    dobot.disconnect()
+
+
+# --- 4. 사용자 수동 입력 스레드 ---
+def _manual_input_thread(shutdown_event):
+
+    """
+    사용자로부터 직접 명령을 받아 각 장치로 전달하는 스레드.
+    메뉴 방식으로 사용자가 클라이언트와 메시지를 선택하도록 안내합니다.
+    """
+    while not shutdown_event.is_set():
+        try:
+
+            print("\n------------------------------")
+            user_input = input("수동 제어 모드로 진입하려면 [Enter]를, 종료하려면 'q'를 입력하세요:\n").strip().lower()
+
+            if user_input == 'q':
+                break
+
+            if user_input == '':
+                print("\n[수동 제어 메뉴]")
+                print("[1] 두봇")
+                print("[2] PLC")
+                print("[3] 아두이노")
+                print("[4] 서버1")
+
+                try:
+                    client_choice = int(input("전송할 클라이언트 번호를 선택하세요: "))
+
+                    if client_choice == 1:
+                        target_client = "DOBOT"
+                    elif client_choice == 2:
+                        target_client = "PLC"
+                    elif client_choice == 3:
+                        target_client = "ARDUINO"
+                    elif client_choice == 4:
+                        target_client = "SERVER1"
+                    elif client_choice == 5:
+                        cm.input_queue.put("receive1_ready")
+                        print("amr이 도착했습니다.")
+                        continue
+                    else:
+                        print("오류: 올바른 번호를 입력하세요.")
+                        continue
+                    message_to_send = input(f"'{target_client}'에 보낼 메시지를 입력하세요: ")
+                    send_succes = True
+                    if target_client == 'DOBOT':
+                        if message_to_send in dobot_list:
+                            dobot_task.put(message_to_send)
+                        else: send_succes = False
+                    elif target_client == 'PLC':
+                        if message_to_send in plc_input_list:
+                            message_to_send = PLC_INPUT[message_to_send]
+                            cm.send_command_to_plc(message_to_send)
+                        else: send_succes = False
+                    elif target_client == 'ARDUINO':
+                        if message_to_send in arduino_list:
+                          cm.send_command_to_arduino(message_to_send)
+                        else: send_succes = False
+                    elif target_client == 'SERVER1':
+                        if message_to_send in server1_list:
+                            cm.send_command_to_server1(message_to_send)
+                        else: send_succes = False
+                    if send_succes : print(f"[발신] {target_client} : {message_to_send}")
+                    else : print(f"[발신실패] {message_to_send} : {target_client}가 이해할 수 없는 메시지입니다.")
+
+                except ValueError:
+                    print("오류: 숫자만 입력하세요.")
+                    continue
+
+        except Exception as e:
+            print(f"수동 입력 오류: {e}")
+
+
+# --- 5. 메인 컨트롤러 루프 (Main Loop) ---
+
+def main_controller_loop():
+    """
+    전체 바퀴 분류 공정의 메인 제어 루프.
+    통신 매니저로부터 신호를 받아 각 작업 큐에 명령을 전달합니다.
+    """
+    signal_data = "[data]"
+    dobot_busy = False
+    color_ready = False
+    amr_arrived = False
+    amr_called = False
+    box1_full = False
+    box2_full = False
+    servo_busy = False
+    box1_notready = False
+    box2_notready = False
+    wheel_counts = {  # NODRED 관리용
+        "white": 4,
+        "black": 4,
+        "blue": 0,
+        "box1_full": False,
+        "box2_full": False,
+        "first_box": "none",
+        "last_wheel": "blue",
+        "first_box_comp": False,
+        "white_count": 0,
+        "black_count": 0,
+        "blue_count": 0,
+        "box_white": 0,
+        "box_black": 0
+    }
+
+
+    print("메인 컨트롤러 시작. 모든 시스템 신호 대기 중...")
+
+    while True:
+        try:
+            signal = cm.get_input_signal()
+            #신호 예외처리
+            is_effectable = False
+            if signal in plc_output_list: ## PLC 출력 -> 자연어 번역
+                signal = PLC_OUTPUT[signal]
+
+            if box1_notready and signal == "box1_ready":
+                dobot_task.put("run_dobot")
+                box1_notready = False
+            elif box2_notready and signal == "box2_ready":
+                dobot_task.put("run_dobot")
+                box2_notready = False
+
+            if signal in ["white","black","blue"]: ## 색판별 완료 후 업데이트
+                wheel_counts[signal] = wheel_counts[signal]+1
+                wheel_counts["last_wheel"] = signal
+                if not dobot_busy:
+                    cm.input_queue.put("color_comp")
+                else: color_ready=True
+
+                if wheel_counts["white"] == 8 and not wheel_counts["box1_full"] : # 하얀 상자가 다 찼을때
+                    wheel_counts["box1_full"] = True
+                    cm.input_queue.put("box1_full")
+                    if wheel_counts["first_box"]=="none":  ## 지금이 첫번째 상자일때
+                        wheel_counts["first_box"] = "box1"  ## 첫번째 상자가 흰색일때
+                    if not amr_called:
+                        cm.send_command_to_server1("call_amr")
+                        amr_called=True
+
+                if wheel_counts["black"] == 8 and not wheel_counts["box2_full"] : # 검은 상자가 다 찼을때
+                    wheel_counts["box2_full"] = True
+                    cm.input_queue.put("box2_full")
+                    if wheel_counts["first_box"]=="none":  ## 지금이 첫번째 상자일때
+                            wheel_counts["first_box"] = "box2"  ## 첫번째 상자가 검은색일때
+                    if not amr_called:
+                        cm.send_command_to_server1("call_amr")
+                        amr_called = True
+
+            if signal == "dobot_comp":
+                dobot_busy=False
+                if color_ready : cm.input_queue.put("color_comp")
+                if not wheel_counts["last_wheel"] == "blue": ## 파란색 이외의 바퀴를 상자에 넣었을때
+                    wheel_data = wheel_counts["last_wheel"] + "." + str(wheel_counts[wheel_counts["last_wheel"]])
+                    cm.send_command_to_server1(wheel_data)
+            if signal == "box1_notready":
+                box1_notready=True
+                dobot_busy = False
+                is_effectable = True
+            if signal == "box2_notready":
+                box2_notready=True
+                dobot_busy = False
+                is_effectable = True
+            if signal == "receive1_ready":
+                amr_arrived=True
+                is_effectable = True
+            if signal in ["white_box_give","black_box_give"] : ## 상자가 amr위에 도착
+                    if not wheel_counts["first_box_comp"]: ## 이 상자가 첫번째일때
+                        wheel_counts["first_box_comp"] = True
+                    else : signal = "snd_box_give"
+                    is_effectable = True
+
+            if signal == "run_dobot":
+                dobot_busy=True
+                is_effectable = True
+
+            if signal in ["servo1_arrive", "servo2_arrive"] and servo_busy:
+                servo_busy = False
+                is_effectable = True
+
+            if isinstance(signal,str) :
+                if signal.startswith(signal_data):
+                    is_effectable = True
+            #각 클라이언트로 갈 신호 처리
+            if signal in dobot_list:
+                dobot_task.put(signal)
+                is_effectable = True
+            if signal in arduino_list:
+                cm.send_command_to_arduino(signal)
+                is_effectable = True
+            if signal in plc_input_list:
+                cm.send_command_to_plc(PLC_INPUT[signal])
+                is_effectable = True
+            if signal in server1_list and not (signal in ["black_box_give", "white_box_give"] and not wheel_counts["first_box_comp"]):
+                cm.send_command_to_server1(signal)
+                is_effectable = True
+            if not is_effectable:
+                print(f"경고: 처리할 수 없는 알 수 없는 신호 '{signal}'가 수신되었습니다.")
+
+        except queue.Empty:
+            if amr_arrived and not servo_busy and not dobot_busy:
+                if not box1_full and wheel_counts["box1_full"]:
+                    cm.input_queue.put("box1_start")
+                    box1_full = True
+                    servo_busy = True
+
+                elif not box2_full and wheel_counts["box2_full"]:
+                    cm.input_queue.put("box2_start")
+                    box2_full = True
+                    servo_busy = True
+
+
+            time.sleep(0.01)
+
+        except Exception as e:
+            print(f"메인 루프 오류 발생: {e}")
+            break
+# --- 6. 프로그램 시작점 ---
+if __name__ == "__main__":
+    program_shutdown_event = threading.Event()
+
+    try:
+         #통신 스레드 시작
+        cm.start_communication_threads(
+            arduino_port=ARDUINO_SERIAL_PORT,
+            arduino_baud=ARDUINO_BAUD_RATE,
+            plc_ip=PLC_IP_ADDRESS,
+            plc_port=PLC_PORT,
+            server_ip=SERVER1_IP_ADDRESS,
+            server_port=SERVER1_PORT
+        )
+
+        ##  두봇 워커 스레드 시작
+        threading.Thread(
+            target=_dobot_worker_thread,
+            args=(program_shutdown_event, DOBOT_SERIAL_PORT, DOBOT_BAUD_RATE),
+            daemon=False
+        ).start()
+
+        # 수동 입력 스레드 시작
+        threading.Thread(target=_manual_input_thread, args=(program_shutdown_event,), daemon=False).start()
+
+        main_controller_loop()
+
+    except KeyboardInterrupt:
+        print("\n프로그램 종료 신호를 받았습니다. 모든 스레드에 종료 신호를 보냅니다.")
+        program_shutdown_event.set()
+    except Exception as e:
+        print(f"예상치 못한 오류로 프로그램이 종료됩니다: {e}")
+        program_shutdown_event.set()
+
+    for thread in threading.enumerate():
+        if thread is not threading.main_thread():
+            thread.join(timeout=1)
