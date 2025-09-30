@@ -1,0 +1,198 @@
+import time
+import DobotDllType as dType
+
+# --- 박스 위치 설정 ---
+place = {
+            'homebox1': [129.8, -216.7, 140, -59.1],
+            'box1,1': [161.1, -179.5, 75, -46.8],
+            'box1,2': [160.0, -239.0, 75, -55.1],
+            'box1,3': [101.3, -175.8, 75, -58.4],
+            'box1,4': [103.0, -234.7, 75, -66.3],
+            'homebox2': [154.8, 163.3, 151.0, 46.5],
+            'box2,1': [188.2, 208.8, 75, 48.0],
+            'box2,2': [186.4, 146.2, 75, 38.1],
+            'box2,3': [134.3, 208.8, 75, 57.3],
+            'box2,4': [128.4, 149.4, 75, 49.3],
+            'home': [210.7, -18.7, 145, -5.1],
+            'pickwheel': [202.5, -10.4, 38.6, -3.0],
+            'trash' : [191.7, -87.3, 50, -24.5],
+        }
+
+
+class DobotController:
+    def __init__(self,port,baudrate):
+        self.api = None
+        self.state = None
+        self.nowbox1 = 0
+        self.nowbox2 = 0
+        self.box1_available = False
+        self.box2_available = False
+        self.box1_full = False
+        self.box2_full = False
+        self.now_wheel = "none"
+        self.DOBOT_SERIAL_PORT = port
+        self.baudrate=baudrate
+
+    def connect(self):
+        """두봇에 연결하고 API를 초기화합니다."""
+        try:
+            self.api = dType.load()
+            self.state = dType.ConnectDobot(self.api, self.DOBOT_SERIAL_PORT, self.baudrate)[0]
+            if self.state == dType.DobotConnect.DobotConnect_NoError:
+                print("두봇 연결에 성공했습니다!")
+                dType.SetQueuedCmdClear(self.api)
+                dType.SetQueuedCmdStartExec(self.api)
+                return True
+            else:
+                print("두봇 연결에 실패했습니다.")
+                return False
+        except Exception as e:
+            print(f"오류가 발생했습니다: {e}")
+            return False
+
+    def home(self):
+        """두봇을 홈 위치로 복귀시킵니다."""
+        print("로봇 원점 복귀를 시작합니다...")
+        dType.SetHOMECmdEx(self.api, 0, 1)
+        dType.SetQueuedCmdClear(self.api)
+        dType.SetQueuedCmdStartExec(self.api)
+        print("로봇이 원점 복귀를 완료했습니다!")
+
+    def moveL(self, key):
+        """L-모드로 지정된 위치로 이동합니다."""
+        coords = place.get(key)
+        if coords is None:
+            print(f"오류: '{key}'에 해당하는 좌표가 없습니다.")
+            return
+        x, y, z, r = coords
+        dType.SetPTPCmdEx(self.api, dType.PTPMode.PTPMOVLXYZMode, x, y, z, r, 1)
+
+    def moveJ(self, key):
+        """J-모드로 지정된 위치로 이동합니다."""
+        coords = place.get(key)
+        if coords is None:
+            print(f"오류: '{key}'에 해당하는 좌표가 없습니다.")
+            return
+        x, y, z, r = coords
+        dType.SetPTPCmdEx(self.api, dType.PTPMode.PTPMOVJXYZMode, x, y, z, r, 1)
+
+    def moveL_off(self, key, off_x, off_y, off_z, off_r):
+        """L-모드로 오프셋을 적용하여 이동합니다."""
+        coords = place.get(key)
+        if coords is None:
+            print(f"오류: '{key}'에 해당하는 좌표가 없습니다.")
+            return
+        x, y, z, r = coords
+        dType.SetPTPCmdEx(self.api, dType.PTPMode.PTPMOVLXYZMode, x + off_x, y + off_y, z + off_z, r + off_r, 1)
+
+    def moveJ_off(self, key, off_x, off_y, off_z, off_r):
+        """J-모드로 오프셋을 적용하여 이동합니다."""
+        coords = place.get(key)
+        if coords is None:
+            print(f"오류: '{key}'에 해당하는 좌표가 없습니다.")
+            return
+        x, y, z, r = coords
+        dType.SetPTPCmdEx(self.api, dType.PTPMode.PTPMOVJXYZMode, x + off_x, y + off_y, z + off_z, r + off_r, 1)
+
+    def grip(self, act):
+        """그리퍼(흡착컵)를 제어합니다."""
+
+        if act == 'on' or act == 1:
+            sucking = True
+        elif act == 'off' or act == 0:
+            sucking = False
+        else:
+            print("off, on 혹은 0, 1로 입력 하세요")
+            return
+        dType.SetEndEffectorSuctionCup(self.api, sucking, 1)
+
+    def disconnect(self):
+        """두봇과의 연결을 해제합니다."""
+        if self.state == dType.DobotConnect.DobotConnect_NoError:
+            dType.SetQueuedCmdStopExec(self.api)
+            dType.DisconnectDobot(self.api)
+            print("두봇 연결이 성공적으로 종료되었습니다.")
+
+    def init_box1(self):
+        self.box1_available = False
+        self.nowbox1 = 0
+    def init_box2(self):
+        self.box2_available = False
+        self.nowbox2 = 0
+    def set_box(self, box,available):
+        if box == 1 :
+            self.box1_available = available
+        elif box == 2 :
+            self.box2_available = available
+    def set_wheel (self,color):
+        if color=="box1_start":
+            self.nowbox1=0
+            self.box1_full = False
+        elif color=="box2_start":
+            self.nowbox2=0
+            self.box2_full = False
+        else: self.now_wheel = color
+
+    def is_box1full(self):
+        return self.box1_full
+    def is_box2full(self):
+        return self.box2_full
+
+    def pick_and_place(self):
+        """
+        바퀴의 색상에 따라 픽업 및 배치 과정을 수행합니다.
+
+        """
+        if self.now_wheel == 'white':
+            if self.box1_available:
+                if self.box1_full:
+                    return "box1_notready"
+                self.nowbox1 = self.nowbox1 + 1
+                target_box = 'box1,' + str(self.nowbox1)
+                target_home = 'homebox1'
+                if self.nowbox1 == 4:
+                    self.box1_full = True
+            else:
+                return "box1_notready"
+
+        elif self.now_wheel == 'black':
+            if self.box2_available:
+                if self.box2_full:
+                    return "box2_notready"
+                self.nowbox2 = self.nowbox2 + 1
+                target_box = 'box2,' + str(self.nowbox2)
+                target_home = 'homebox2'
+                if self.nowbox2 == 8:
+                    self.box2_full = True
+            else:
+                return "box2_notready"
+        elif self.now_wheel == "none":
+            return "no_wheel"
+
+        # 1. 바퀴 픽업
+        self.moveJ('home')
+        self.moveJ_off('pickwheel', 0, 0, 50, 0)
+        self.moveL('pickwheel')
+        self.grip(1)
+        time.sleep(1)
+        self.moveL_off('pickwheel', 0, 0, 50, 0)
+        if self.now_wheel == "black" or self.now_wheel == "white":
+            # 2.바퀴가 정상인 경우 타겟박스에 배치
+            self.moveJ(target_home)
+            self.moveL_off(target_box, 0, 0, 45, 0)
+            self.moveL(target_box)
+            self.grip(0)
+            time.sleep(1)
+            self.moveL_off(target_box, 0, 0, 45, 0)
+            self.moveJ('home')
+        elif self.now_wheel == "blue":
+            # 2. 바퀴가 블루인경우 쓰레기통에 배치
+            self.moveJ_off("trash", 0, 0, 50, 0)
+            self.moveL("trash")
+            self.grip(0)
+            self.moveL_off("trash", 0, 0, 50, 0)
+            self.moveJ("home")
+        self.now_wheel = "none"
+        return "dobot_comp"
+
+
