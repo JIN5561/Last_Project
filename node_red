@@ -1,0 +1,1996 @@
+[
+    {
+        "id": "284561c72e8bd7f2",
+        "type": "tab",
+        "label": "플로우 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "570fb53da7a66405",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 880,
+        "wires": [
+            [
+                "e3c8b7fb9c680821"
+            ]
+        ]
+    },
+    {
+        "id": "b94494caac481ee5",
+        "type": "switch",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "property": "payload.payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "BASEBK",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "BASEWH",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "BODY_MOVE_ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "WHEEL_MOVE_ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ABB_CAR_MOVE_ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "CAR_DISPLAY_ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "COMPLETE",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 7,
+        "x": 670,
+        "y": 1160,
+        "wires": [
+            [
+                "ab9d0c1b9bdb0107",
+                "b389089e9b098a29",
+                "9b3954feed98c170"
+            ],
+            [
+                "ab9d0c1b9bdb0107",
+                "b389089e9b098a29",
+                "9b3954feed98c170"
+            ],
+            [
+                "05531d9751f50aa4",
+                "566bd1af2ff49f3e"
+            ],
+            [
+                "e38c013442125143",
+                "589c85d57fd8879f"
+            ],
+            [
+                "9b3954feed98c170",
+                "bb537f2f8fd1dbd0"
+            ],
+            [
+                "74be116cb2652969",
+                "bb4c5271991cb0b9"
+            ],
+            [
+                "f6bf174aa9e98713"
+            ]
+        ]
+    },
+    {
+        "id": "b389089e9b098a29",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1020,
+        "wires": [
+            [
+                "5a3438ad534c5bb5"
+            ]
+        ]
+    },
+    {
+        "id": "566bd1af2ff49f3e",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1180,
+        "wires": [
+            [
+                "fbbded4c2676e956"
+            ]
+        ]
+    },
+    {
+        "id": "589c85d57fd8879f",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1260,
+        "wires": [
+            [
+                "532a5a8c069b4913"
+            ]
+        ]
+    },
+    {
+        "id": "bb537f2f8fd1dbd0",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 860,
+        "y": 1440,
+        "wires": [
+            [
+                "a0cdb359a44dfa0c"
+            ]
+        ]
+    },
+    {
+        "id": "bb4c5271991cb0b9",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 860,
+        "y": 1520,
+        "wires": [
+            [
+                "ccc114599f335be1"
+            ]
+        ]
+    },
+    {
+        "id": "031766234dfda7e4",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1080,
+        "y": 260,
+        "wires": [
+            [
+                "95b3ae927c3ee99f"
+            ]
+        ]
+    },
+    {
+        "id": "312e29b0d9de44bc",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1080,
+        "y": 400,
+        "wires": [
+            [
+                "95b3ae927c3ee99f",
+                "7bd3b95cbd2130cd",
+                "80d3fc1f28550f8a"
+            ]
+        ]
+    },
+    {
+        "id": "92d544d2ca882472",
+        "type": "switch",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "property": "payload.payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "FACTORY_START",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "BLACK_CONT_COMP",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "WHITE_CONT_COMP",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "AMR_WHEEL_MOVE_ON",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 690,
+        "y": 340,
+        "wires": [
+            [
+                "031766234dfda7e4"
+            ],
+            [
+                "d6b72d71b8d45f23"
+            ],
+            [
+                "5e85794a60b58f6c"
+            ],
+            [
+                "312e29b0d9de44bc",
+                "570fb53da7a66405",
+                "15ca5aaa7aafd368"
+            ]
+        ]
+    },
+    {
+        "id": "ab9d0c1b9bdb0107",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 920,
+        "wires": [
+            [
+                "e3c8b7fb9c680821"
+            ]
+        ]
+    },
+    {
+        "id": "05531d9751f50aa4",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1060,
+        "wires": [
+            [
+                "5a3438ad534c5bb5"
+            ]
+        ]
+    },
+    {
+        "id": "e38c013442125143",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1220,
+        "wires": [
+            [
+                "fbbded4c2676e956"
+            ]
+        ]
+    },
+    {
+        "id": "9b3954feed98c170",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 980,
+        "y": 1300,
+        "wires": [
+            [
+                "532a5a8c069b4913"
+            ]
+        ]
+    },
+    {
+        "id": "74be116cb2652969",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 860,
+        "y": 1480,
+        "wires": [
+            [
+                "a0cdb359a44dfa0c"
+            ]
+        ]
+    },
+    {
+        "id": "f6bf174aa9e98713",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 860,
+        "y": 1560,
+        "wires": [
+            [
+                "ccc114599f335be1"
+            ]
+        ]
+    },
+    {
+        "id": "d6b72d71b8d45f23",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1080,
+        "y": 300,
+        "wires": [
+            [
+                "7bd3b95cbd2130cd"
+            ]
+        ]
+    },
+    {
+        "id": "5e85794a60b58f6c",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1080,
+        "y": 340,
+        "wires": [
+            [
+                "80d3fc1f28550f8a"
+            ]
+        ]
+    },
+    {
+        "id": "85a83d2ba7176bb7",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "order": 1,
+        "width": 18,
+        "height": 1,
+        "name": "",
+        "label": "바퀴분류",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "Arial Black,Arial Black,Gadget,sans-serif",
+        "fontSize": "50",
+        "color": "#e6a014",
+        "x": 1320,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "ca089bc958ecca95",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "order": 12,
+        "width": 5,
+        "height": 7,
+        "name": "",
+        "label": "Black Container",
+        "format": "",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1600,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "5bdc3ad048c4499d",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "order": 22,
+        "width": 5,
+        "height": 7,
+        "name": "",
+        "label": "White Container",
+        "format": "",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1600,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "37fac290a95a216c",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 1,
+        "width": 12,
+        "height": 1,
+        "name": "",
+        "label": "공정 순서도",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "Arial Black,Arial Black,Gadget,sans-serif",
+        "fontSize": "50",
+        "color": "#e6a014",
+        "x": 1230,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "291889622c91a55e",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 12,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "차판 이동중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1330,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "4d792e2b34c7ed61",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 20,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "차량 조립중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1330,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "da84ac560c67b120",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 28,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "바퀴 조립중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1330,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "ae86ec9df9914a08",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 36,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "완성차량 이동중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1220,
+        "y": 1460,
+        "wires": []
+    },
+    {
+        "id": "0a5957bc4badd9fe",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 4,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "바퀴 이동중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1310,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "f04ece112bcf8d75",
+        "type": "ui_text",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "order": 44,
+        "width": 7,
+        "height": 1,
+        "name": "",
+        "label": "차량 전시중",
+        "format": "{{msg.payload}}",
+        "layout": "row-center",
+        "className": "",
+        "style": true,
+        "font": "",
+        "fontSize": "40",
+        "color": "#aeff00",
+        "x": 1190,
+        "y": 1540,
+        "wires": []
+    },
+    {
+        "id": "6fd1741fe929cb71",
+        "type": "ui_gauge",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "group": "7a35e4c65c22f5ce",
+        "order": 21,
+        "width": 8,
+        "height": 7,
+        "gtype": "wave",
+        "title": "White tire",
+        "label": "/8",
+        "format": "{{payload}}",
+        "min": "4",
+        "max": "8",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 1420,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "7c2039ba7bda9992",
+        "type": "ui_gauge",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "group": "7a35e4c65c22f5ce",
+        "order": 11,
+        "width": 8,
+        "height": 7,
+        "gtype": "wave",
+        "title": "Black tire",
+        "label": "/8",
+        "format": "{{payload}}",
+        "min": "4",
+        "max": "8",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "black-tire-gauge",
+        "x": 1420,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "5a3438ad534c5bb5",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "차판 이동중",
+        "order": 9,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/2.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/8.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1190,
+        "y": 1040,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fbbded4c2676e956",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "차량 조립중",
+        "order": 17,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/1.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/7.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1190,
+        "y": 1200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "532a5a8c069b4913",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "바퀴 조립중",
+        "order": 25,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/3.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/9.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1190,
+        "y": 1280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a0cdb359a44dfa0c",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "AMR 이동2",
+        "order": 33,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/5.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/11.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1070,
+        "y": 1460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ccc114599f335be1",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "차량 전시",
+        "order": 41,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/6.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/12.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1060,
+        "y": 1540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e3c8b7fb9c680821",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "AMR 이동",
+        "order": 2,
+        "width": 4,
+        "height": 3,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/4.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/10.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1180,
+        "y": 900,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "95b3ae927c3ee99f",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "name": "공정 시작",
+        "order": 3,
+        "width": 12,
+        "height": 4,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/13.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/14.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1320,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c2dc5ac6e0d77c21",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "화살표",
+        "order": 7,
+        "width": 2,
+        "height": 2,
+        "format": "<img src=\"/15.png\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1230,
+        "y": 940,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2faaa77d1f29635a",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "화살표",
+        "order": 23,
+        "width": 2,
+        "height": 2,
+        "format": "<img src=\"/15.png\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1230,
+        "y": 1160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "609d4a5d243b8555",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "화살표",
+        "order": 31,
+        "width": 2,
+        "height": 2,
+        "format": "<img src=\"/15.png\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1230,
+        "y": 1240,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b65170cd56248050",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "화살표",
+        "order": 39,
+        "width": 2,
+        "height": 2,
+        "format": "<img src=\"/15.png\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1110,
+        "y": 1320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "aebdf61c28c208a7",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "b2543403b0b9e6b2",
+        "name": "화살표",
+        "order": 15,
+        "width": 2,
+        "height": 2,
+        "format": "<img src=\"/15.png\">",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1110,
+        "y": 1500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7bd3b95cbd2130cd",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "name": "BLACK CONTAINER",
+        "order": 13,
+        "width": 4,
+        "height": 7,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 200%;\n        height: 200%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 200%;\n        max-height: 200%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 200%;\n        height: 200%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/16.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/17.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1360,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "80d3fc1f28550f8a",
+        "type": "ui_template",
+        "z": "284561c72e8bd7f2",
+        "group": "7a35e4c65c22f5ce",
+        "name": "WHITE CONTAINER",
+        "order": 23,
+        "width": 4,
+        "height": 7,
+        "format": "<style>\n    /* div 컨테이너가 ui_template 위젯 전체를 채우도록 설정합니다. \n      display: flex와 align-items, justify-content는 이미지를 중앙에 배치하는 역할입니다.\n    */\n    .truck-container {\n        position: relative;\n        width: 100%;\n        height: 100%;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n    }\n\n    /* 컨테이너 안의 모든 img 태그에 적용됩니다.\n      max-width와 max-height를 100%로 설정하여 이미지가 위젯 밖으로 벗어나지 않게 합니다.\n    */\n    .truck-container img {\n        max-width: 100%;\n        max-height: 100%;\n    }\n\n    /* 겹쳐질 연두색 트럭 이미지의 스타일 */\n    .overlay-truck {\n        position: absolute;\n        top: 0;\n        left: 0;\n        width: 100%;\n        height: 100%;\n        /* object-fit: contain; 은 이미지 비율을 유지하면서 컨테이너 안에 꽉 차게 합니다. */\n        object-fit: contain;\n    }\n</style>\n\n<div class=\"truck-container\">\n    <img src=\"/16.png\" alt=\"흰색 트럭\" style=\"object-fit: contain;\">\n\n    <img src=\"/17.png\" class=\"overlay-truck\" ng-show=\"show_truck\">\n</div>\n\n<script>\n    (function(scope) {\n    scope.$watch('msg', function(msg) {\n        if (msg) {\n            scope.show_truck = msg.payload;\n        }\n    });\n})(scope);\n</script>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 1360,
+        "y": 380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9af7e5c8b0ac1304",
+        "type": "inject",
+        "z": "284561c72e8bd7f2",
+        "name": "허브서버에등록",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "NODE_RED",
+        "payloadType": "str",
+        "x": 90,
+        "y": 640,
+        "wires": [
+            [
+                "ef2c4ca6eb5bcc7c"
+            ]
+        ]
+    },
+    {
+        "id": "ef2c4ca6eb5bcc7c",
+        "type": "tcp request",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "server": "192.168.3.16",
+        "port": "3111",
+        "out": "sit",
+        "ret": "string",
+        "splitc": " ",
+        "newline": "\\n",
+        "trim": false,
+        "tls": "",
+        "x": 260,
+        "y": 640,
+        "wires": [
+            [
+                "b27dafc77ca4252f"
+            ]
+        ]
+    },
+    {
+        "id": "b27dafc77ca4252f",
+        "type": "json",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": true,
+        "x": 430,
+        "y": 640,
+        "wires": [
+            [
+                "b94494caac481ee5",
+                "92d544d2ca882472",
+                "9e475b63d98353eb",
+                "4efc6fe5295e3fd7"
+            ]
+        ]
+    },
+    {
+        "id": "afa99ef2f59898ba",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "$number($substringAfter(msg.payload, \".\"))",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1000,
+        "y": 620,
+        "wires": [
+            [
+                "7c2039ba7bda9992"
+            ]
+        ]
+    },
+    {
+        "id": "9e475b63d98353eb",
+        "type": "debug",
+        "z": "284561c72e8bd7f2",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 680,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "43b04c85162178b8",
+        "type": "debug",
+        "z": "284561c72e8bd7f2",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "bf20eb9b09c35016",
+        "type": "function",
+        "z": "284561c72e8bd7f2",
+        "name": "function 1",
+        "func": "// msg.payload 값을 가져옵니다.\nvar payload = msg.payload;\n\n// 1. payload의 데이터 타입을 확인하여 디버그 창에 경고(warn)로 표시합니다.\nnode.warn(\"데이터 타입: \" + typeof (payload));\n\n// 2. Switch 노드와 동일한 정규 표현식을 만듭니다.\nvar regex = /^black\\..*/;\n\n\n// 3. 정규 표현식이 payload와 일치하는지 테스트합니다.\nvar isMatch = regex.test(payload);\n\n// 4. 일치 여부(true/false)를 디버그 창에 경고(warn)로 표시합니다.\nnode.warn(\"정규식 일치 여부: \" + isMatch);\n\n// 만약 일치한다면(true), 메시지를 다음 노드로 전달합니다.\nif (isMatch) {\n    return msg;\n}\n\n// 일치하지 않으면 메시지 전달을 중단합니다.\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 620,
+        "wires": [
+            [
+                "afa99ef2f59898ba",
+                "43b04c85162178b8"
+            ]
+        ]
+    },
+    {
+        "id": "4efc6fe5295e3fd7",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.payload",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 600,
+        "y": 640,
+        "wires": [
+            [
+                "bf20eb9b09c35016",
+                "8eb90edab8bec80a"
+            ]
+        ]
+    },
+    {
+        "id": "8eb90edab8bec80a",
+        "type": "function",
+        "z": "284561c72e8bd7f2",
+        "name": "function 2",
+        "func": "// msg.payload 값을 가져옵니다.\nvar payload = msg.payload;\n\n// 1. payload의 데이터 타입을 확인하여 디버그 창에 경고(warn)로 표시합니다.\nnode.warn(\"데이터 타입: \" + typeof (payload));\n\n// 2. Switch 노드와 동일한 정규 표현식을 만듭니다.\nvar regex = /^white\\..*/;\n\n\n// 3. 정규 표현식이 payload와 일치하는지 테스트합니다.\nvar isMatch = regex.test(payload);\n\n// 4. 일치 여부(true/false)를 디버그 창에 경고(warn)로 표시합니다.\nnode.warn(\"정규식 일치 여부: \" + isMatch);\n\n// 만약 일치한다면(true), 메시지를 다음 노드로 전달합니다.\nif (isMatch) {\n    return msg;\n}\n\n// 일치하지 않으면 메시지 전달을 중단합니다.\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 680,
+        "wires": [
+            [
+                "43b04c85162178b8",
+                "50f158869db300c7"
+            ]
+        ]
+    },
+    {
+        "id": "50f158869db300c7",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "$number($substringAfter(msg.payload, \".\"))",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1000,
+        "y": 680,
+        "wires": [
+            [
+                "6fd1741fe929cb71"
+            ]
+        ]
+    },
+    {
+        "id": "15ca5aaa7aafd368",
+        "type": "change",
+        "z": "284561c72e8bd7f2",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.count",
+                "pt": "msg",
+                "to": "0",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1080,
+        "y": 480,
+        "wires": [
+            [
+                "7c2039ba7bda9992",
+                "6fd1741fe929cb71"
+            ]
+        ]
+    },
+    {
+        "id": "4715c02f7e9d4625",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 2,
+        "width": "1",
+        "height": "2"
+    },
+    {
+        "id": "d672550ca914fd8c",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 2,
+        "width": "1",
+        "height": "4"
+    },
+    {
+        "id": "c6db55ff0fbfe579",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 3,
+        "width": "1",
+        "height": "8"
+    },
+    {
+        "id": "90b27e44da68b665",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 2,
+        "width": "1",
+        "height": "4"
+    },
+    {
+        "id": "282a5e804161472a",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 4,
+        "width": "1",
+        "height": "4"
+    },
+    {
+        "id": "e1b91f0bf798330a",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 6,
+        "width": "1",
+        "height": "2"
+    },
+    {
+        "id": "6f47c4bc3f87e521",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "",
+        "order": 4,
+        "width": "1",
+        "height": "4"
+    },
+    {
+        "id": "8104b1a9c859fec6",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 2,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "21d55e85565449d3",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 4,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "565bab248856bd18",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 5,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "4cd80f91c5bf6f1b",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 6,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "de9b7304b6c0fcdd",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 7,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "5c986d39ab720426",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 8,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "0a7783a94e27164c",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 9,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "82c58ff49dd00d11",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 10,
+        "width": 3,
+        "height": 1
+    },
+    {
+        "id": "b0e49b74070ff7d3",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 14,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "66244ff75bef99af",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 15,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "7f9d062c26634445",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 16,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "5f408828f59a826a",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 17,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "d375788f7a6138e2",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 18,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "69c916807a03c463",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 19,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "0f22b56ee488ffcf",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 20,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "793d5bddd7db2824",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 24,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "e33d5963cc4cd829",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 25,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "e1bcdd01712b7063",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 26,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "6f81bae9c38aa3a8",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 27,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "93031d6e65396de7",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 28,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "409476c2f13f6454",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 29,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "6758cf178737b3f1",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "7a35e4c65c22f5ce",
+        "order": 30,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "e6deb96b9b0ed3d2",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 3,
+        "width": 8,
+        "height": 1
+    },
+    {
+        "id": "29b430d7ce20dd74",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 5,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "6150b8b9e0b1c916",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 6,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "f2f6597b5f6303c0",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 8,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "53e9aa5cb4297997",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 10,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "66c23dcb56450c40",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 11,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "0859ea06d04d0b7c",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 13,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "89efb9f030a46e6b",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 14,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "6413ca46b4fac1ad",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 16,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "dfaf1feb4edb9131",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 18,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "b4df19c8fe561bb0",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 19,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "8f00ea9d3d854b5e",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 21,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "149c56f5084a654a",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 22,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "7a91c372c5282103",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 24,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "42e26e2d23bb201e",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 26,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "875f64de23c875e6",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 27,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "fe0d70f305a3a10d",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 29,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "0c2bdf5f24367163",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 30,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "0a97ee9484474481",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 32,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "f7ddd681336df563",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 34,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "e396cb5e8294e6eb",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 35,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "2164b9af9ab74727",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 37,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "655d33825c4f49be",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 38,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "9605b79e7c64c92f",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 40,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "1eaea53798275b48",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 42,
+        "width": 2,
+        "height": 1
+    },
+    {
+        "id": "791f48b4b416eab4",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 43,
+        "width": 4,
+        "height": 1
+    },
+    {
+        "id": "12a87b4be4126c4a",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 45,
+        "width": 1,
+        "height": 1
+    },
+    {
+        "id": "44064d8d459f8e41",
+        "type": "ui_spacer",
+        "z": "284561c72e8bd7f2",
+        "name": "spacer",
+        "group": "b2543403b0b9e6b2",
+        "order": 46,
+        "width": 8,
+        "height": 1
+    },
+    {
+        "id": "7a35e4c65c22f5ce",
+        "type": "ui_group",
+        "name": "",
+        "tab": "01bdba88065dc72f",
+        "order": 1,
+        "disp": true,
+        "width": 18,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "b2543403b0b9e6b2",
+        "type": "ui_group",
+        "name": "",
+        "tab": "01bdba88065dc72f",
+        "order": 2,
+        "disp": true,
+        "width": 12,
+        "collapse": false,
+        "className": "",
+        "info": "****공정순서도\r\nㅇㄴㅇㄴㅇㄴㅇㄴㅇㄴㅇ"
+    },
+    {
+        "id": "01bdba88065dc72f",
+        "type": "ui_tab",
+        "name": "차량 조립 공정 현황판",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "a50daef46730f5c5",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6"
+        }
+    }
+]
