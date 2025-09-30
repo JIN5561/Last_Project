@@ -1,0 +1,414 @@
+#include <WiFiS3.h>
+#include <WiFiClient.h>
+#include <Servo.h>
+
+// Wi-Fi 네트워크 정보
+const char* ssid = "ROBOT1_2G";
+
+// 서버 정보
+const char* serverHost = "192.168.3.16"; // 파이썬 서버의 IP
+const uint16_t serverPort = 3111;       // 파이썬 서버의 포트
+
+//예정 수정
+//박스 색상저장을 위한 전역 상태변수 추가
+// === 박스 색 상태 ===
+String firstBoxColor = "";   // "white" 또는 "black"
+String secondBoxColor = "";  // first의 반대색
+
+// TCP 클라이언트 객체
+WiFiClient client;
+
+// 모터1 서보모터 객체
+Servo motor1;
+
+// --- AMR 통신을 위한 핀 정의 ---
+const int MACRO1_PIN = 2; // 매크로1 신호 (출력)
+const int MACRO2_PIN = 3; // 매크로2 신호 (출력)
+const int MACRO3_PIN = 11; // 매크로3 신호 (출력)
+const int MACRO4_PIN = 12; // 매크로4 신호 (출력)
+const int MACRO_COMP_PIN = 8; // macro_comp 신호 (입력)
+
+// --- 모터 제어를 위한 핀 정의 (Arduino UNO R4 WiFi에 맞춤) ---
+const int MOTOR1_PIN = 9; // 모터1 서보모터 제어 핀 (PWM 핀)
+
+// 모터2 DC모터 제어 핀 (L298N 모터 드라이버 가정)
+const int MOTOR2_FORWARD1_PIN = 5; // 모터2 정회전 핀 1
+const int MOTOR2_FORWARD2_PIN = 6; // 모터2 정회전 핀 2
+const int MOTOR2_REVERSE1_PIN = 4; // 모터2 역회전 핀 1
+const int MOTOR2_REVERSE2_PIN = 7; // 모터2 역회전 핀 2
+const int up = 28;
+const int receive_car_angle = 75; //상향
+const int mid = 50; //매우상향
+const int down = 90; //중립
+const int send_box_angle = 120; //하향
+const int give_car_angle = 120; //하향
+//--- 디버그 출력 함수 ---
+void debugPrint(const String &msg) {
+  if (Serial) {
+    Serial.println(msg);
+  }
+}
+
+// --- 함수 선언 ---
+void runFullProcess(String msg);
+void connectToWiFi();
+void connectToServer();
+void sendAmrSignal(int pin);
+void waitForAmrSignal();
+void controlMotor2(int direction,int delay_ms);
+void stopMotor2();
+void receive_cont();
+void give_cont();
+void receive_car();
+void give_car();
+void controlmotor1(int angle);
+void frt_load(); 
+void send_box();
+
+// ▼ 서버 메시지 대기 헬퍼 프로토타입 추가
+bool waitForServerOneOf(const String options[], size_t n, String &matched,
+                        unsigned long timeoutMs = 30000, unsigned long idleMs = 10);
+
+void setup() {
+  Serial.begin(115200);
+
+  // --- AMR 통신 핀 모드 설정 ---
+  pinMode(MACRO1_PIN, OUTPUT);
+  pinMode(MACRO2_PIN, OUTPUT);
+  pinMode(MACRO3_PIN, OUTPUT);
+  pinMode(MACRO4_PIN, OUTPUT);
+  pinMode(MACRO_COMP_PIN, INPUT_PULLUP);
+
+  // --- 모터 핀 모드 설정 ---
+  motor1.attach(MOTOR1_PIN);
+
+  pinMode(MOTOR2_FORWARD1_PIN, OUTPUT);
+  pinMode(MOTOR2_FORWARD2_PIN, OUTPUT);
+  pinMode(MOTOR2_REVERSE1_PIN, OUTPUT);
+  pinMode(MOTOR2_REVERSE2_PIN, OUTPUT);
+
+  connectToWiFi();
+  connectToServer();
+}
+
+void loop() {
+  if (!client.connected()) {
+    connectToServer();
+  }
+
+  // ---- 하트비트 (예정추가)------------------------------
+  // 1) 상단에 상수로 분리 (나중에 바꾸기 편함)
+  const unsigned long HEARTBEAT_MS = 20000;
+  // 2) millis() 랩어라운드(약 49.7일)에도 안전한 비교 패턴
+  static unsigned long lastHb = 0;
+  if (millis() - lastHb >= HEARTBEAT_MS){
+    client.println("heartbeat");
+    lastHb += HEARTBEAT_MS;
+  }
+  // ---- 하트비트 (예정추가)-------------------------------
+
+  if (client.available()) {
+    String msg = client.readStringUntil('\n');
+    msg.trim();
+    if (msg.length() > 0) {
+      client.println("ACK:" + msg);
+      runFullProcess(msg);
+    }
+  }
+}
+
+void runFullProcess(String msg) {
+  
+  //첫번째 박스 로드
+  if (msg == "call_amr") {
+
+  while (client.available()) client.read(); // [추가] 이전에 남아있던 수신 데이터를 버려서 오탐 방지
+  client.println("amr_move");
+  sendAmrSignal(MACRO1_PIN);          // AMR 픽업 위치 호출
+  client.println("AMR_SIGNAL_SENT:macro1");
+  waitForAmrSignal();                 // AMR 도착
+  receive_cont();                     // 서버에 receive1_ready
+
+  const String opts[] = {"white_box_give", "black_box_give"};
+  String matched;
+  bool ok = waitForServerOneOf(opts, 2, matched, 600000);
+  if (!ok) {
+    client.println("ERROR:timeout_waiting_first_color");
+    return;
+  }
+
+  if (matched == "white_box_give") firstBoxColor = "Box_Wh";
+  else firstBoxColor = "Box_Bk";
+  client.println("FIRST_BOX_COLOR:" + firstBoxColor);
+
+  frt_load();                         // 첫 박스 투입 + receive2_ready
+  return;
+}
+  
+
+  //두번째 박스 로드 
+  if (msg == "snd_box_give") {
+  controlMotor2(-1,2000);
+  client.println("MOTOR2:reverse_1_5s");
+  //controlmotor1(mid);
+  delay(1000);
+  client.println("MOTOR1:90");
+  //client.println("BOX_COMP"); // 박스 모두 적재완료
+  client.println("box_load_done"); // 박스 모두 
+  controlmotor1(down); //중립각도
+  //박스 이송
+  client.println("amr_move");
+  sendAmrSignal(MACRO2_PIN);  //박스이송트리거 AMR
+  client.println("AMR_SIGNAL_SENT:macro2");
+  
+  waitForAmrSignal();                 // AMR 도착
+  
+  //박스 abb전달
+  send_box();                         // 상부 투입 + give1_ready
+
+  if (firstBoxColor == "Box_Wh") secondBoxColor = "Box_Bk";
+  else if (firstBoxColor == "Box_Bk") secondBoxColor = "Box_Wh";
+  else secondBoxColor = "";
+
+  client.println("BOX_COLOR:first=" + firstBoxColor + ",second=" + secondBoxColor);
+  client.println("ABB1_DELIVER_SEQ:" + secondBoxColor + "," + firstBoxColor); // 적재 역순 전달
+  return;
+}
+  
+  //첫번째 박스 abb1 전달 완료 및 두번째 박스 준비완료 전달
+  if (msg == "Fst_Box_C") {
+    client.println("Step 5: Running motor2 forward for 3.5 seconds.");
+    controlMotor2(1,6000);
+    client.println("MOTOR2:forward_3s");
+    client.println("give2_ready");
+    delay(20);                       // 2) (선택) 아주 짧은 완충
+    client.println(secondBoxColor);
+  }
+
+  //abb1 두박스 모두 받음
+  if (msg == "Snd_Box_C") {
+    //client.println("Step 8: Tilting motor1 back to 90 degrees.");
+    controlmotor1(down); //중립위치
+    delay(1000);
+    client.println("MOTOR1:90");
+    debugPrint("give_cont() function completed.");
+  }
+
+  if (msg == "ready_car") {
+    receive_car();
+    
+    delay(3000);
+  }
+
+  if (msg == "car1_give") {
+    debugPrint("Step 4: Running motor2 in reverse for 3 seconds.");
+    controlMotor2(-1,3000);
+    client.println("MOTOR2:reverse_3s");
+    client.println("car2_receive_ready");
+  }
+
+  if (msg == "car2_give") {
+    debugPrint("Step 7: Running motor2 in reverse for 1.5 seconds.");
+    controlMotor2(-1,2000);
+    client.println("MOTOR2:reverse_1_5s");
+    debugPrint("Step 8: Tilting motor1 back to 90 degrees.");
+    controlmotor1(down); //중립위치
+    delay(1000);
+    client.println("MOTOR1:90");
+    debugPrint("receive_car() function completed.");
+    client.println("amr_move");
+    sendAmrSignal(MACRO3_PIN);
+    client.println("AMR_SIGNAL_SENT:macro3");
+    waitForAmrSignal(); // 블로킹 함수
+    give_car();
+  }
+
+  if (msg == "car1_comp") {
+    debugPrint("Step 5: Running motor2 forward for 3 seconds.");
+    controlMotor2(1,6000);
+    client.println("MOTOR2:forward_3s");
+    client.println("car2_ready");
+  }
+
+  if (msg == "car2_comp") {
+    debugPrint("Step 8: Tilting motor1 back to 90 degrees.");
+    controlmotor1(down); //중립
+    delay(1000);
+    client.println("MOTOR1:90");
+    debugPrint("give_car() function completed.");
+    client.println("amr_move");
+    sendAmrSignal(MACRO4_PIN);
+    client.println("AMR_SIGNAL_SENT:macro4");
+    waitForAmrSignal(); // 블로킹 함수
+    client.println("ALL_PROCESS_COMPLETED");
+  }
+}
+
+void sendAmrSignal(int pin) {
+  digitalWrite(pin, HIGH);
+  delay(500);
+  digitalWrite(pin, LOW);
+}
+
+void waitForAmrSignal() {
+  debugPrint("Waiting for 'macro_comp' signal from AMR on pin: " + String(MACRO_COMP_PIN));
+  client.println("Waiting for 'macro_comp' signal from AMR on pin: " + String(MACRO_COMP_PIN));
+  while (digitalRead(MACRO_COMP_PIN) == HIGH) {
+    delay(200); // 대기 시간을 200ms로 늘렸습니다.
+  }
+  
+  debugPrint("Correct signal received. Proceeding.");
+  client.println("Correct signal received. Proceeding.");
+  while (digitalRead(MACRO_COMP_PIN) == LOW) {
+    delay(200); // 대기 시간을 200ms로 늘렸습니다.
+  }
+  client.println("arrived");
+}
+
+//예정
+//첫번째 박스 로드
+void frt_load() {
+  debugPrint("Step 4: Running motor2 in reverse for 3 seconds.");
+  controlMotor2(-1,3500);
+  client.println("MOTOR2:reverse_3s");
+  client.println("receive2_ready");     // 서버에 2번째 받을 준비 완료 통지
+}
+
+//ABB1로 첫박스 전달
+void send_box() {
+  debugPrint("Executing give_cont() function.");
+  controlmotor1(send_box_angle); //박스전달각도
+  delay(1000);
+  client.println("MOTOR1:send_box_angle");
+  controlMotor2(1,3000);
+  client.println("MOTOR2:forward_1_5s");
+  client.println("give1_ready");        // 1) 서버에 상부 투입 완료 통지
+  delay(20);                       // 2) (선택) 아주 짧은 완충
+  client.println(firstBoxColor);   // 3) 첫 박스 색 토큰: "Box_Wh" 또는 "Box_Bk"
+
+}
+//서버 메시지 대기 헬퍼 (라인 단위 정확 매칭)
+bool waitForServerOneOf(const String options[], size_t n, String &matched,
+                        unsigned long timeoutMs, unsigned long idleMs) {
+  String buf;
+  unsigned long start = millis();
+
+  while (client.connected()) {
+    while (client.available()) {
+      char ch = (char)client.read();
+      if (ch == '\r') continue;
+      if (ch == '\n') {
+        String line = buf; buf = "";
+        line.trim();
+        if (line.length() == 0) continue;
+
+        for (size_t i = 0; i < n; ++i) {
+          if (line == options[i]) { matched = line; return true; }
+        }
+        // 다른 라인이면 무시(필요 시 로그만)
+      } else {
+        if (buf.length() < 512) buf += ch;
+        else buf.remove(0, 256);
+      }
+    }
+    if (timeoutMs > 0 && (millis() - start) > timeoutMs) return false;
+    delay(idleMs);
+  }
+  return false;
+}
+
+void controlMotor2(int direction, int delay_ms) {
+  if (direction == 1) { // 정회전
+    digitalWrite(MOTOR2_REVERSE1_PIN, LOW);
+    digitalWrite(MOTOR2_REVERSE2_PIN, LOW);
+    digitalWrite(MOTOR2_FORWARD1_PIN, HIGH);
+    digitalWrite(MOTOR2_FORWARD2_PIN, HIGH);
+  } else if (direction == -1) { // 역회전
+    digitalWrite(MOTOR2_FORWARD1_PIN, LOW);
+    digitalWrite(MOTOR2_FORWARD2_PIN, LOW);
+    digitalWrite(MOTOR2_REVERSE1_PIN, HIGH);
+    digitalWrite(MOTOR2_REVERSE2_PIN, HIGH);
+  } else {
+    digitalWrite(MOTOR2_FORWARD1_PIN, LOW);
+    digitalWrite(MOTOR2_FORWARD2_PIN, LOW);
+    digitalWrite(MOTOR2_REVERSE1_PIN, LOW);
+    digitalWrite(MOTOR2_REVERSE2_PIN, LOW);
+  }
+  delay(delay_ms);
+  stopMotor2();
+}
+
+void controlmotor1(int angle){
+  motor1.write(angle);
+}
+
+void stopMotor2() {
+  digitalWrite(MOTOR2_FORWARD1_PIN, LOW);
+  digitalWrite(MOTOR2_FORWARD2_PIN, LOW);
+  digitalWrite(MOTOR2_REVERSE1_PIN, LOW);
+  digitalWrite(MOTOR2_REVERSE2_PIN, LOW);
+}
+
+void connectToWiFi() {
+  debugPrint("Connecting to WiFi...");
+  WiFi.begin(ssid);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    debugPrint("Connecting...");
+  }
+  debugPrint("WiFi connected!");
+  debugPrint("IP Address: " + WiFi.localIP().toString());
+}
+
+void connectToServer() {
+  while (!client.connect(serverHost, serverPort)) {
+    debugPrint("Connection to server failed. Retrying in 3 seconds...");
+    delay(3000);
+  }
+  debugPrint("Connected to server successfully!");
+
+  String role = "ROLE_ARDUINO\n"; 
+  client.write(role.c_str(), role.length());
+  debugPrint("Sent role to server: " + role);
+}
+
+void receive_cont() {
+  debugPrint("Executing receive_cont() function.");
+  debugPrint("Step 1: Tilting motor1 backward to 70 degrees.");
+  delay(1000);
+  debugPrint("Step 2: Sending 'receive1_ready' to server.");
+  client.println("receive1_ready");
+}
+
+void give_cont() {
+  debugPrint("Executing give_cont() function.");
+  debugPrint("Step 1: Tilting motor1 forward to 110 degrees.");
+  controlmotor1(down);
+  delay(1000);
+  debugPrint("Step 2: Running motor2 forward for 1.5 seconds.");
+  controlMotor2(1,3000);
+  client.println("MOTOR2:forward_1_5s");
+  client.println("give1_ready");
+}
+
+void receive_car() {
+  debugPrint("Executing receive_car() function.");
+  debugPrint("Step 1: Tilting motor1 backward to 70 degrees.");
+  controlmotor1(receive_car_angle);
+  delay(1000);
+  client.println("MOTOR1:receive_car_angle");
+  client.println("car1_receive_ready");
+}
+
+void give_car() {
+  debugPrint("Executing give_car() function.");
+  debugPrint("Step 1: Tilting motor1 forward to 110 degrees.");
+  controlmotor1(give_car_angle); //하향
+  client.println("MOTOR1: give_car_angle");
+  delay(1000);
+  debugPrint("Step 2: Running motor2 forward for 1.5 seconds.");
+  controlMotor2(1,2500);
+  client.println("MOTOR2:forward_1_5s");
+  client.println("car1_ready");
+}
