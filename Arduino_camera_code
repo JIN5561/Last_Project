@@ -1,0 +1,147 @@
+#include <HUSKYLENS.h>
+#include <Wire.h>
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+Servo servo1;
+Servo servo2;
+HUSKYLENS huskylens;
+
+// 바퀴 색상 ID (허스키렌즈에서 직접 학습시켜야 합니다)
+const int ID_WHITE = 1;
+const int ID_BLACK = 2;
+const int ID_BLUE = 3;
+const int detection_duration_time = 2000;
+const int min_count = 30;
+
+int white_count = 0;
+int black_count = 0;
+int blue_count = 0;
+
+
+String detect_color();
+
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  servo1.attach(3);
+  servo2.attach(9);
+  servo1.write(100);
+  servo2.write(170);
+
+  while(!huskylens.begin(Wire)){
+    Serial.println("[data:]허스키렌즈 연결 실패! 연결 상태를 확인해주세요.");
+    delay(100);
+  }
+  Serial.println("[data]:허스키렌즈 연결 성공!");
+  
+  huskylens.writeAlgorithm(ALGORITHM_COLOR_RECOGNITION);
+  delay(200);
+  
+}
+
+
+void loop() {
+  // 1. 서버로부터 감지 시작 명령 받기
+  if (Serial.available() > 0) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    if (command == "run_color" or command == "FAILED") {
+      String result = detect_color();
+      Serial.println("[data]:색상판정 완료");
+      Serial.println(result);
+      Serial.print("[data]:화이트: "); Serial.println(white_count);
+      Serial.print("[data]:블랙: "); Serial.println(black_count);
+      Serial.print("[data]:블루: "); Serial.println(blue_count);
+    }
+    else if (command == "box1_start"){
+      servo1.write(0);
+      delay(1500);
+      Serial.println("gate1_open");
+      delay(4000);
+      servo1.write(100);
+      Serial.println("[data]:gate1_closed");
+    }
+    else if (command == "box2_start"){
+      servo2.write(80);
+      delay(1500);
+      Serial.println("gate2_open");
+      delay(4000);
+      servo2.write(170);
+      Serial.println("[data]:gate2_closed");
+    }
+    else if (command == "gate1_close"){
+      servo1.write(100);
+      Serial.println("[data]:gate1_closed");
+    }
+    else if (command == "gate2_close"){
+      servo2.write(170);
+      delay(1500);
+      Serial.println("[data]:gate1_closed");
+      
+    }
+  }
+}
+
+
+String detect_color() {
+  // 이 함수 안에서만 사용되는 지역 변수들
+  unsigned long detection_start_time = millis();
+  white_count=0;
+  black_count=0;
+  blue_count=0;
+
+  // 바퀴를 특정하기 위한 조건
+  const int wheel_center_min_x = 100;
+  const int wheel_center_max_x = 200;
+  const int wheel_center_min_y = 100;
+  const int wheel_center_max_y = 200;
+  const int wheel_height_min = 100;
+  const int wheel_height_max = 250;
+  const int wheel_width_min = 120;
+  const int wheel_width_max = 250;
+
+  // 2초 동안 감지 및 카운트
+  while (millis() - detection_start_time < detection_duration_time) {
+    // 허스키렌즈에 데이터 요청
+    huskylens.request();
+
+    // 모든 사용 가능한 블록을 읽도록 while 문으로 변경
+    while (huskylens.available()) {
+      HUSKYLENSResult result = huskylens.read();
+      
+      if (result.command == COMMAND_RETURN_BLOCK) {
+        // 모든 색상에 대해 동일한 필터링 조건 적용
+        if ((result.xCenter >= wheel_center_min_x) && (result.xCenter <= wheel_center_max_x) && 
+            (result.yCenter >= wheel_center_min_y) && (result.yCenter <= wheel_center_max_y) &&
+            (result.height >= wheel_height_min) && (result.height <= wheel_height_max) &&
+            (result.width >= wheel_width_min) && (result.width <= wheel_width_max)) {
+          
+          if (result.ID == ID_WHITE) {
+            white_count++;
+          } else if (result.ID == ID_BLACK) {
+            black_count++;
+          } else if (result.ID == ID_BLUE) {
+            blue_count++;
+          }
+        }
+      }
+    }
+  }
+  int max_count = white_count;
+  String max_color = "white";
+
+  if (black_count > max_count){
+    max_count = black_count;
+    max_color = "black";
+  }
+  if (blue_count > max_count){
+    max_count = blue_count;
+    max_color = "blue";
+  }
+  if (max_count < min_count){
+    max_color = "FAILED";
+  }
+  return max_color;
+}
