@@ -1,0 +1,133 @@
+MODULE Robot2_Classification
+    
+    VAR socketdev client_socket;
+    VAR string server_ip := "192.168.3.16";
+    CONST num server_port := 3111;
+    
+    VAR socketstatus client_status;
+    VAR string received_msg := "";
+    
+    PERS num nCarCount := 18;
+    
+    CONST robtarget p_home := [[300.38,-35.16,565.56],[0.00861505,-0.330592,-0.943725,0.00415648],[-1,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_arrive := [[607.82,-14.58,131.35],[0.0086613,-0.330569,-0.943733,0.00417],[-1,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_arrive_pass := [[340.82,-12.81,275.38],[0.0102992,-0.0444489,-0.998945,-0.00519309],[-1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_cont_pass := [[356.37,379.55,566.49],[0.0101613,-0.0443919,-0.998949,-0.0052832],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_car_pass := [[331.73,90.30,406.05],[0.00774473,-0.327713,-0.944744,-0.00194675],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_black_cont := [[393.20,-434.85,28.92],[0.0101716,-0.0443944,-0.998948,-0.00528389],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_black_one := [[423.28,-463.94,61.95],[0.010173,-0.0443923,-0.998948,-0.00528436],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_white_cont := [[246.97,-436.02,31.42],[0.0101564,-0.0444352,-0.998947,-0.00527949],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_white_one := [[277.71,-464.27,57.50],[0.0101431,-0.0444087,-0.998948,-0.00525535],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_cont_out := [[680.53,371.99,506.71],[0.0103007,-0.0444621,-0.998944,-0.00519285],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_car_in := [[285.52,363.89,144.22],[0.00922581,0.451401,-0.892268,-0.00320883],[0,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_car_one := [[335.98,-312.15,201.12],[0.00772114,-0.327702,-0.944748,-0.00193384],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_car_two := [[337.99,-98.22,204.20],[0.00773884,-0.327717,-0.944742,-0.00193128],[-1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    
+    TASK PERS tooldata tool_one:=[TRUE,[[0,0,110],[1,0,0,0]],[0.2,[0,0,50],[1,0,0,0],0,0,0]];
+    
+    PROC grip_on()
+        PulseDO\PLength:=0.2, do00_grip_on;
+        WaitDI di00_grip_on_sen, 1;
+    ENDPROC
+    
+    PROC grip_off()
+        PulseDO\PLength:=0.2, do01_grip_off;
+        WaitDI di01_grip_off_sen, 1;
+    ENDPROC
+    
+
+    PROC Store_Car1()
+        VAR robtarget p_car_place;
+        TPWrite "Storing car number 1...";
+        p_car_place := p_car_one;
+        
+        WaitDI di07_car_arrive, 1;
+        
+        MoveJ Offs(p_car_in,0,0,60), v100, z50, tool_one;
+        MoveL p_car_in, v20, fine, tool_one;
+        grip_on;
+        MoveJ Offs(p_car_in,5,0,5), v100, z50, tool_one;
+        MoveJ Offs(p_car_in,5,0,60), v100, z50, tool_one;
+        MoveJ p_car_pass, v100, z50, tool_one;
+        MoveJ Offs(p_car_place,0,0,30), v50, z50, tool_one;
+        MoveL p_car_place, v20, fine, tool_one;
+        grip_off;
+        MoveJ Offs(p_car_place,0,0,30), v20, fine, tool_one;
+        MoveJ p_car_pass, v100, z50, tool_one;
+        
+        MoveJ p_home, v200, z50, tool_one;
+        
+        nCarCount := nCarCount + 1;
+        TPWrite "Car number " + ValToStr(nCarCount) + " stored.";
+    ENDPROC
+    
+    PROC Store_Car2()
+        VAR robtarget p_car_place;
+        TPWrite "Storing car number 2...";
+        p_car_place := p_car_two;
+        
+        WaitDI di07_car_arrive, 1;
+        
+        MoveJ Offs(p_car_in,0,0,60), v100, z50, tool_one;
+        MoveL p_car_in, v20, fine, tool_one;
+        grip_on;
+        MoveJ Offs(p_car_in,5,0,5), v100, z50, tool_one;
+        MoveJ Offs(p_car_in,5,0,60), v100, z50, tool_one;
+        MoveJ p_car_pass, v100, z50, tool_one;
+        MoveJ Offs(p_car_place,0,0,30), v50, z50, tool_one;
+        MoveL p_car_place, v20, fine, tool_one;
+        grip_off;
+        MoveJ Offs(p_car_place,0,0,30), v20, fine, tool_one;
+        MoveJ p_car_pass, v100, z50, tool_one;
+        
+        MoveJ p_home, v200, z50, tool_one;
+        
+        
+        nCarCount := nCarCount + 1;
+        TPWrite "Car number " + ValToStr(nCarCount) + " stored.";
+    ENDPROC
+    
+    PROC client_init()
+        SocketCreate client_socket;
+        SocketConnect client_socket, server_ip, server_port;
+        TPWrite "Connected to server at " + server_ip + ":" + NumToStr(server_port, 0);
+        SocketSend client_socket \Str := "ROLE_ABB2";
+    ENDPROC
+    
+    PROC client_close()
+        SocketClose client_socket;
+        TPWrite "Client socket closed";
+    ENDPROC
+    
+    PROC main()
+        AccSet 1,1;
+        client_init;
+        MoveJ p_home, v200, z50, tool_one;
+        grip_off;
+        
+        WHILE TRUE DO
+            TPWrite "Waiting for signal from server...";
+            SocketReceive client_socket \Str := received_msg \Time := 99999;
+            TPWrite "Now messge : " + received_msg;
+            
+            IF received_msg = "car1_ready" THEN
+                TPWrite "AMR car arrived signal received. Storing car1.";
+                Store_Car1;
+                SocketSend client_socket \Str := "car1_comp";
+                SocketReceive client_socket \Str := received_msg \Time := 99999;
+                    IF received_msg = "car2_ready" THEN
+                        TPWrite "AMR car arrived signal received. Storing car2.";
+                        Store_Car2;
+                        SocketSend client_socket \Str := "car2_comp";                        
+                        SocketSend client_socket \Str := "COMPLETE";
+                    ENDIF
+                received_msg := "";    
+            ENDIF
+            
+            received_msg := "";
+            WaitTime 0.1;
+        ENDWHILE
+    ENDPROC
+
+ENDMODULE
