@@ -1,0 +1,494 @@
+MODULE Robot1_Assembly
+
+    VAR socketdev client_socket;
+    VAR string server_ip := "192.168.3.16";
+    CONST num server_port := 3111;
+
+    VAR socketstatus client_status;
+    VAR string received_msg := "";    
+    VAR string cntmsg;
+
+    VAR num state := 0;
+
+    CONST robtarget p_HOME := [[401.30,0.88,390.17],[1.02157E-05,-0.0335374,-0.999437,-1.21369E-06],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_WhL := [[406.91,-234.87,390.18],[2.67452E-05,-0.0335581,-0.999437,-1.55407E-05],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Wh1 := [[407.56,-113.44,199.04],[0.017469,-0.017416,-0.706835,-0.706949],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Wh2 := [[402.62,-32.04,197.96],[0.00286888,0.00282178,-0.70703,0.707172],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Wh3 := [[338.26,-111.45,198.34],[0.0174969,-0.0174406,-0.706758,-0.707024],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Wh4 := [[337.61,-36.00,198.30],[0.00290746,0.00285813,-0.707004,0.707198],[0,-1,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+      
+    CONST robtarget p_plate1 := [[-214.07,368.46,153.02],[3.59272E-05,0.0335498,0.999437,-8.56086E-05],[1,0,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_plate2 := [[47.76,371.82,151.68],[6.64569E-05,0.0335651,0.999437,-3.01072E-06],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_plate := [[370.53,-72.93,175.19],[0.00886098,-0.00799499,-0.99991,-0.00617461],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_p := [[138.73,341.80,390.18],[7.12802E-05,0.0335683,0.999436,9.68515E-06],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    CONST robtarget p_BODYRD := [[-393.13,-509.92,131.32],[0.0102019,-0.296684,-0.954916,-0.0032202],[-2,-1,-2,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_BODYWH := [[-395.10,-412.40,130.66],[0.0101689,-0.296699,-0.954911,-0.00327486],[-2,-1,-2,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_body := [[339.85,-70.20,239.98],[0.0102682,-0.296656,-0.954923,-0.00336428],[-1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_p1 := [[21.66,-404.84,340.79],[0.0101726,-0.296646,-0.954928,-0.00332769],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+    CONST robtarget p_BASEBK := [[-101.73,-522.38,111.45],[0.010182,-0.296681,-0.954917,-0.00327089],[-2,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_BASEWH := [[-101.72,-411.39,109.96],[0.0101849,-0.296687,-0.954915,-0.00334978],[-2,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_base := [[337.43,-69.56,222.17],[0.010196,-0.296731,-0.954901,-0.00335558],[-1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+
+    CONST robtarget Car_H:=[[338.43,-72.56,216.18],[0.000145431,-0.0335337,-0.999438,-2.49037E-05],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Car_Rl1:=[[-233.82,370.92,219.57],[1.68774E-05,-0.0335064,-0.999439,-4.57655E-05],[1,-1,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Car_Rl2:=[[24.02,370.90,217.68],[2.55377E-06,0.0335191,0.999438,1.83999E-05],[0,-1,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Car_OuT:=[[628.53,374.96,593.73],[3.16584E-05,0.0336262,0.999434,3.02924E-05],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Get_Box:=[[344.26,365.35,126.67],[0.000119846,-0.0324404,-0.999474,9.93161E-05],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Black_Box:=[[317.47,-576.34,30.06],[0.000266472,0.0334871,0.999439,-0.000412425],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_White_Box:=[[315.24,-389.26,28.53],[0.000192068,0.033499,0.999439,-0.000324217],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_Black_WhL:=[[348.24,-606.02,37.11],[0.000260568,0.0334974,0.999439,-0.000404643],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget p_White_WhL:=[[345.00,-419.12,36.01],[0.000215931,0.033485,0.999439,-0.000350882],[-1,-1,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    TASK PERS tooldata tool_one:=[TRUE,[[0,0,110],[1,0,0,0]],[0.2,[0,0,50],[1,0,0,0],0,0,0]];
+    CONST robtarget DROP_RI1:=[[-243.68,369.82,191.33],[6.24896E-06,0.0335157,0.999438,8.9997E-06],[1,-1,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget DROP_RI2:=[[15.50,371.44,199.38],[1.1877E-05,-0.0335033,-0.999439,5.12455E-06],[0,0,1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    
+
+    PROC client_init()
+        SocketCreate client_socket;
+        SocketConnect client_socket, server_ip, server_port;
+        TPWrite "Connected to server at " + server_ip + ":" + NumToStr(server_port, 0);
+        SocketSend client_socket \Str := "ROLE_ABB1";
+    ENDPROC
+    
+    PROC client_close()
+        SocketClose client_socket;
+        TPWrite "Client socket closed";
+    ENDPROC
+    PROC adjust()
+         MoveJ p_body, v100, z50, tool_one;
+         MoveJ Car_OuT, v100, z50, tool_one;
+         MoveJ DROP_RI1, v100, z50, tool_one;
+         MoveJ DROP_RI2, v100, z50, tool_one;
+    ENDPROC
+    PROC main()
+        AccSet 1,1;
+        client_init;
+        MoveJ p_HOME, v500, z50, tool_one;
+        grip_off;        
+
+        TPWrite "Waiting for initial give1_ready command...";
+       WHILE TRUE DO
+            SocketReceive client_socket \Str := received_msg \Time := 99999;
+            IF received_msg = "give1_ready" THEN
+                received_msg := "";
+                SocketReceive client_socket \Str := received_msg \Time := 99999;
+                TEST received_msg
+                    CASE "Box_Bk", "Box_Wh":
+                    WaitDI di20_inputXstop, 1;
+                        IF received_msg = "Box_Bk" THEN INCOME1;
+                        ELSEIF received_msg = "Box_Wh" THEN INCOME2; ENDIF
+                     SocketSend client_socket \Str := "Fst_Box_C";
+                ENDTEST
+                received_msg := "";
+                SocketReceive client_socket \Str := received_msg \Time := 99999;
+                IF received_msg = "give2_ready" THEN
+                    received_msg := "";
+                    SocketReceive client_socket \Str := received_msg \Time := 99999;
+                    TEST received_msg
+                        CASE "Box_Bk", "Box_Wh":
+                        WaitDI di20_inputXstop, 1;
+                            IF received_msg = "Box_Bk" THEN INCOME1;
+                            ELSEIF received_msg = "Box_Wh" THEN INCOME2; ENDIF
+                         SocketSend client_socket \Str := "Snd_Box_C";
+                    ENDTEST
+                ENDIF
+            ENDIF
+            WaitTime 0.1;
+
+        FOR i FROM 1 TO 2 DO
+            TPWrite "Starting car assembly number " + ValToStr(i) + " of 2.";
+            state := 1;
+
+            WHILE state < 4 DO
+                client_status := SocketGetStatus(client_socket);
+                IF client_status <> SOCKET_CONNECTED THEN
+                    TPWrite "Server connection lost. Waiting to reconnect...";
+                    WHILE client_status <> SOCKET_CONNECTED DO
+                        WaitTime 1;
+                        client_status := SocketGetStatus(client_socket);
+                    ENDWHILE
+                    TPWrite "Reconnected to server.";
+                    SocketSend client_socket \Str := "ROLE_ABB1";
+                ENDIF
+                
+                SocketReceive client_socket \Str := received_msg \Time := 99999;
+
+                IF received_msg <> "" THEN
+                    TPWrite "Received Command:" + received_msg;
+                    
+                    TEST state
+                    CASE 1:
+                        TEST received_msg
+                        CASE "BASEBK", "BASEWH":
+                            IF received_msg = "BASEBK" THEN Put_PlT1; ENDIF
+                            IF received_msg = "BASEWH" THEN Put_PlT2; ENDIF
+                            
+                            Assemble_Lower_Body received_msg;
+                            state := 2;
+                            SocketSend client_socket \Str := "BASE_END";
+                        DEFAULT:
+                            TPWrite "ERROR: Expected LOWER command. Received: " + received_msg;
+                            SocketSend client_socket \Str := "ERROR: WRONG_ORDER";
+                        ENDTEST
+                    CASE 2: 
+                        TEST received_msg
+                        CASE "BODYRD", "BODYWH":
+                            Assemble_Upper_Body received_msg;
+                            state := 3;
+                            SocketSend client_socket \Str := "BODY_END";
+                        DEFAULT:
+                            TPWrite "ERROR: Expected UPPER command. Received: " + received_msg;
+                            SocketSend client_socket \Str := "ERROR: WRONG_ORDER";
+                        ENDTEST
+                    CASE 3:
+                        TEST received_msg
+                        CASE "WHEELBK": Get_Wh_Black; state := 4;
+                            SocketSend client_socket \Str := "WHEEL_END";
+                        CASE "WHEELWH": Get_Wh_White; state := 4;
+                            SocketSend client_socket \Str := "WHEEL_END";
+                        DEFAULT:
+                            TPWrite "ERROR: Expected WHEELS command. Received: " + received_msg;
+                            SocketSend client_socket \Str := "ERROR: WRONG_ORDER";
+                        ENDTEST            
+                    DEFAULT:
+                        TPWrite "Unknown state or command: " + received_msg;
+                        SocketSend client_socket \Str := "ERROR: UNKNOWN_COMMAND";
+                    ENDTEST
+                    received_msg := "";
+                ENDIF
+                WaitTime 0.1;
+            ENDWHILE
+            IF i=1 THEN
+                Rl1;
+                SocketSend client_socket \Str := "C";
+            ELSEIF i=2 THEN
+                Rl2;
+                SocketSend client_socket \Str := "ready_car";
+            ELSE
+                TPWrite "ERROR: Expected RELEASE command. Received: " + received_msg;
+                SocketSend client_socket \Str := "ERROR: WRONG_ORDER";
+            ENDIF
+            TPWrite "Car assembly number " + ValToStr(i) + " complete. Preparing for the next car.";
+        ENDFOR      
+        
+        DROP;
+        
+        client_close;
+        
+        ENDWHILE
+    ENDPROC
+
+    PROC INCOME1()
+        MoveJ offs(p_Get_Box,0,0,30), v500, z50, tool_one;
+        MoveL p_Get_Box, v20, fine, tool_one;
+        Grip_on;
+        MoveJ offs(p_Get_Box,0,0,30), v20, fine, tool_one;        
+        MoveL p_HOME, v300, z50, tool_one;
+        received_msg := "";
+        MoveJ offs(p_Black_Box,0,0,30), v500, z50, tool_one;
+        MoveL p_Black_Box, v20, fine, tool_one;
+        Grip_off;
+        MoveJ offs(p_Black_Box,0,0,30), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;
+    ENDPROC
+    
+    PROC INCOME2()        
+        MoveJ offs(p_Get_Box,0,0,30), v500, z50, tool_one;
+        MoveL p_Get_Box, v20, fine, tool_one;
+        Grip_on;
+        MoveJ offs(p_Get_Box,0,0,30), v20, fine, tool_one;
+        MoveL p_HOME, v300, z50, tool_one;
+        MoveJ offs(p_White_Box,0,0,30), v300, z50, tool_one;
+        MoveL p_White_Box, v20, fine, tool_one;
+        Grip_off;
+        MoveJ offs(p_White_Box,0,0,30), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;
+    ENDPROC
+    
+    PROC Put_PlT1()
+        MoveJ offs(p_plate1,0,0,50), v500, z50, tool_one;
+        MoveL p_plate1, v20, fine, tool_one;
+        Grip_on;
+        MoveL offs(p_plate1,0,0,50), v20, fine, tool_one;
+        MoveL p_p, v300, z50, tool_one;
+        MoveJ offs(p_plate,0,0,50), v300, z50, tool_one;
+        MoveL p_plate, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_plate,0,0,50), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;           
+    ENDPROC
+    
+    PROC Put_PlT2() 
+        MoveJ offs(p_plate2,0,0,50), v500, z50, tool_one;
+        MoveL p_plate2, v20, fine, tool_one;
+        Grip_on;
+        MoveL offs(p_plate2,0,0,50), v20, fine, tool_one;
+        MoveL p_p, v300, z50, tool_one;
+        MoveJ offs(p_plate,0,0,50), v300, z50, tool_one;
+        MoveL p_plate, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_plate,0,0,50), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;      
+    ENDPROC
+ 
+    PROC Assemble_Lower_Body(string color)
+        TEST color
+        CASE "BASEBK":
+            Put_BasE p_BASEBK, p_p1, p_base;
+        CASE "BASEWH":
+            Put_BasE p_BASEWH, p_p1, p_base;
+        ENDTEST
+    ENDPROC
+
+    PROC Assemble_Upper_Body(string color)
+        TEST color
+        CASE "BODYRD":
+            Put_BodY p_BODYRD, p_p1, p_body;
+        CASE "BODYWH":
+            Put_BodY p_BODYWH, p_p1, p_body;
+        ENDTEST
+    ENDPROC
+    
+    PROC Put_BasE(robtarget p_body_2, robtarget p_p1, robtarget p_base)        
+        MoveL p_p1, v500, z50, tool_one;
+        MoveJ offs(p_body_2,0,0,50), v500, z50, tool_one;
+        MoveL p_body_2, v20, fine, tool_one;
+        Grip_on;
+        MoveL offs(p_body_2,0,0,50), v20, fine, tool_one;
+        MoveL p_p1, v300, z50, tool_one;
+        MoveL offs(p_base,0,0,50), v300, z50, tool_one;
+        MoveL p_base, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_base,0,0,50), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;      
+    ENDPROC    
+
+    PROC Put_BodY(robtarget p_body_1, robtarget p_p1, robtarget p_body)        
+        MoveL p_p1, v300, z50, tool_one;
+        MoveJ offs(p_body_1,0,0,50), v300, z50, tool_one;
+        MoveL p_body_1, v20, fine, tool_one;
+        Grip_on;
+        MoveL offs(p_body_1,0,0,50), v20, fine, tool_one;
+        MoveL p_p1, v300, z50, tool_one;
+        MoveL offs(p_body,0,0,50), v300, z50, tool_one;
+        MoveL p_body, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_body,0,0,50), v20, fine, tool_one;
+        MoveL p_HOME, v500, z50, tool_one;
+    ENDPROC
+
+    PROC Get_Wh_Black()
+        VAR num x_offset := 0;
+        VAR num y_offset := 0;
+        VAR num wheel_count := 1;
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ offs(p_Black_Box,0,0,50), v500, z50, tool_one;
+        FOR i FROM 0 TO 1 DO
+            FOR j FROM 0 TO 1 DO
+                MoveJ Offs(p_Black_WhL, x_offset, y_offset, 50), v500, z50, tool_one;
+                MoveL Offs(p_Black_WhL, x_offset, y_offset, 0), v20, fine, tool_one;
+                grip_on;
+                MoveL Offs(p_Black_WhL, x_offset, y_offset, 50), v20, fine, tool_one;
+                TEST wheel_count
+                CASE 1:
+                    Put_Wh1;
+                CASE 2:
+                    Put_Wh2;
+                CASE 3:
+                    Put_Wh3;
+                CASE 4:
+                    Put_Wh4;
+                ENDTEST
+                wheel_count := wheel_count + 1;
+                x_offset := x_offset - 60;
+            ENDFOR
+            y_offset := y_offset + 60;
+            x_offset := 0;
+        ENDFOR
+        MoveJ p_HOME, v500, z50, tool_one;
+    ENDPROC
+
+    PROC Get_Wh_White()
+        VAR num x_offset := 0;
+        VAR num y_offset := 0;
+        VAR num wheel_count := 1;
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ offs(p_White_Box,0,0,50), v500, z50, tool_one;
+        FOR i FROM 0 TO 1 DO
+            FOR j FROM 0 TO 1 DO
+                MoveJ Offs(p_White_WhL, x_offset, y_offset, 50), v500, fine, tool_one;
+                MoveL Offs(p_White_WhL, x_offset, y_offset, 0), v20, fine, tool_one;
+                grip_on;
+                MoveL Offs(p_White_WhL, x_offset, y_offset, 50), v20, fine, tool_one;
+                TEST wheel_count
+                CASE 1:
+                    Put_Wh1;
+                CASE 2:
+                    Put_Wh2;
+                CASE 3:
+                    Put_Wh3;
+                CASE 4:
+                    Put_Wh4;
+                ENDTEST
+                wheel_count := wheel_count + 1;
+                x_offset := x_offset - 60;
+            ENDFOR
+            y_offset := y_offset + 60;
+            x_offset := 0;
+        ENDFOR
+        MoveJ p_HOME, v500, z50, tool_one;
+    ENDPROC
+
+    PROC Put_Wh1()
+        MoveL p_WhL, v500, z50, tool_one;
+        MoveJ offs(p_Wh1,0,-50,0), v300, z50, tool_one;
+        MoveL p_Wh1, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_Wh1,0,-50,0), v20, fine, tool_one;        
+        MoveL p_WhL, v300, z50, tool_one;
+    ENDPROC
+    
+    PROC Put_Wh2()
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ Offs(p_Wh2,0,50,0), v300, z50, tool_one;
+        MoveL p_Wh2, v20, fine, tool_one;
+        Grip_off;
+        MoveL Offs(p_Wh2,0,50,0), v20, fine, tool_one;
+        MoveJ p_HOME, v300, z50, tool_one;
+    ENDPROC
+        
+    PROC Put_Wh3()
+        MoveL p_WhL, v500, z50, tool_one;
+        MoveJ offs(p_Wh3,0,-50,0), v300, z50, tool_one;
+        MoveL p_Wh3, v20, fine, tool_one;
+        Grip_off;
+        MoveL offs(p_Wh3,0,-50,0), v20, fine, tool_one;        
+        MoveL p_WhL, v300, z50, tool_one;
+    ENDPROC    
+    
+    PROC Put_Wh4()
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ Offs(p_Wh4,0,50,0), v300, z50, tool_one;
+        MoveL p_Wh4, v20, fine, tool_one;
+        Grip_off;
+        MoveL Offs(p_Wh4,0,50,0), v20, fine, tool_one;
+        MoveJ p_HOME, v300, z50, tool_one;
+    ENDPROC    
+    
+    PROC Rl1()
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ offs(Car_H,0,0,50), v500, z50, tool_one;
+        MoveL Car_H, v20, fine, tool_one;
+        grip_on;
+        MoveJ offs(Car_H,0,0,50), v20, fine, tool_one;
+        MoveJ Offs(Car_Rl1, 0, 0, 200), v300, z50, tool_one;
+        MoveJ Offs(Car_Rl1,0,0,50), v300, fine, tool_one;
+        MoveL Car_Rl1, v20, fine, tool_one;
+        grip_off;
+        MoveJ Offs(Car_Rl1,0,0,50), v20, fine, tool_one;
+        MoveJ p_HOME, v500, z50, tool_one;
+    ENDPROC
+    
+    PROC Rl2()
+        MoveJ p_HOME, v500, z50, tool_one;
+        MoveJ offs(Car_H,0,0,50), v500, z50, tool_one;
+        MoveL Car_H, v20, fine, tool_one;
+        grip_on;
+        MoveJ offs(Car_H,0,0,50), v20, fine, tool_one;
+        MoveJ Offs(Car_Rl2, 0, 0, 200), v300, z50, tool_one;
+        MoveJ Offs(Car_Rl2,0,0,50), v300, fine, tool_one; 
+        MoveL Car_Rl2, v20, fine, tool_one;
+        grip_off;
+        MoveJ Offs(Car_Rl2,0,0,50), v20, fine, tool_one;            
+        MoveJ p_HOME, v500, z50, tool_one;
+    ENDPROC
+    
+PROC DROP()
+    TPWrite "Waiting for car1_receive_ready...";
+    
+    WHILE TRUE DO
+        SocketReceive client_socket \Str := received_msg \Time := 99999;
+        IF received_msg = "car1_receive_ready" THEN
+            received_msg := "";
+            GOTO next1;
+        ENDIF        
+    ENDWHILE
+    
+    next1:
+    MoveJ p_HOME, v500, z50, tool_one;
+    MoveJ Offs(DROP_RI1,0,0,50), v500, z50, tool_one;
+    MoveL DROP_RI1, v20, fine, tool_one;
+    grip_on;
+    MoveJ Offs(DROP_RI1,0,0,200), v300, z50, tool_one;
+    MoveL Offs(Car_OuT, -100, 0, 50), v300, z50, tool_one;
+    MoveJ Offs(Car_OuT, 0, 0, 50), v20, fine, tool_one;
+    MoveL Car_OuT, v20, fine, tool_one;
+    grip_off;
+    MoveJ Offs(Car_OuT, 0, 0, 50), v20, fine, tool_one;
+    MoveJ Offs(Car_OuT, -100, 0, 50), v500, z50, tool_one;
+    MoveJ p_HOME, v500, z50, tool_one;
+    
+    SocketSend client_socket \Str := "car1_give";
+    received_msg := "";
+    
+    TPWrite "Waiting for car2_receive_ready...";
+
+    WHILE TRUE DO
+        SocketReceive client_socket \Str := received_msg \Time := 99999;
+        IF received_msg = "car2_receive_ready" THEN
+            received_msg := "";
+            GOTO next2;
+        ENDIF
+    ENDWHILE
+
+    next2:
+    MoveJ p_HOME, v500, z50, tool_one;
+    MoveJ Offs(DROP_RI2,0,0,50), v500, z50, tool_one;
+    MoveL DROP_RI2, v20, fine, tool_one;
+    grip_on;
+    MoveJ Offs(DROP_RI2,0,0,200), v300, fine, tool_one;
+    MoveL Offs(Car_OuT, -100, 0, 50), v300, z50, tool_one;
+    MoveJ Offs(Car_OuT, 0, 0, 50), v20, fine, tool_one;
+    MoveL Car_OuT, v20, fine, tool_one;
+    grip_off;
+    MoveJ Offs(Car_OuT, 0, 0, 50), v20, fine, tool_one;
+    MoveJ Offs(Car_OuT, -200, 0, 50), v500, z50, tool_one;
+    MoveJ p_HOME, v500, z50, tool_one;
+    
+    SocketSend client_socket \Str := "car2_give";
+    received_msg := "";
+    
+ENDPROC
+    
+    PROC grip_on()
+        PulseDO\PLength:=0.2, do00_grip_on;
+        WaitDI di00_grip_on_sen, 1;
+    ENDPROC
+    
+    PROC grip_off()
+        PulseDO\PLength:=0.2, do01_grip_off;
+        WaitDI di01_grip_off_sen, 1;
+    ENDPROC
+    PROC test_BASE()
+            Put_BasE p_BASEBK, p_p1, p_base;
+    ENDPROC
+    PROC test_upper()
+            Put_BodY p_BODYRD, p_p1, p_body;
+    ENDPROC
+
+    TRAP E_STOP
+        VAR robtarget e_stop_pos;
+        StopMove;
+        StorePath;
+        e_stop_pos:= CRobT();    
+        MoveJ p_HOME, v200, z50, tool_one;
+        WaitDI di08_restart,1;
+        MoveL e_stop_pos, v100, fine, tool_one;
+        RestoPath;
+        StartMove;
+    ENDTRAP
+ENDMODULE
